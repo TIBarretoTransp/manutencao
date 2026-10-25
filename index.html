@@ -1,0 +1,1672 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-title" content="Manutenção">
+<title>Barreto Manutenção</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<meta name="theme-color" content="#0B2A6B">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/favicon.png">
+<link rel="apple-touch-icon" href="icons/apple-touch-icon.png">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow:wght@400;500;600;700;800&family=Barlow+Semi+Condensed:wght@700;800&display=swap">
+<style>
+/* Tema único claro, igual ao esboço. Layout: barra lateral + conteúdo + painel de totais no computador; cabeçalho + navegação inferior no celular */
+:root{
+  --navy:#0B2A6B; --navy-ink:#061A45; --orange:#FF9100; --on-orange:#172033;
+  --bg:#F3F5F9; --surface:#FFFFFF; --surface-2:#EEF1F7; --line:#E2E6EE; --line-2:#CDD3DF;
+  --fg:#172033; --fg-2:#3A4458; --muted:#5B6478; --heading:#0B2A6B;
+  --primary:#0B2A6B; --on-primary:#FFFFFF; --bar:#0B2A6B; --on-bar:#FFFFFF; --on-bar-2:#C9D3EA;
+  --ok-bg:#E3F4EA; --ok:#1A6B3A; --warn-bg:#FFF1DB; --warn:#8A4B00; --bad-bg:#FDE7E6; --bad:#A1231B;
+  --info-bg:#E7ECF7; --info:#1E3A7A; --sel:#EEF2FA; --logo-bg:transparent; --shadow:0 1px 2px rgba(11,42,107,.08);
+  --plate-inv-bg:#FFFFFF; --plate-inv-fg:#0B2A6B; --bar-hover:rgba(255,255,255,.12);
+  color-scheme:light;
+  --f-display:"Barlow Semi Condensed","Barlow","Arial Narrow",system-ui,sans-serif;
+  --f-body:"Barlow",system-ui,-apple-system,"Segoe UI",sans-serif;
+}
+
+*{box-sizing:border-box}
+html,body{height:100%}
+body{background:var(--bg);color:var(--fg);font-family:var(--f-body);font-size:15px;line-height:1.4}
+body::before{content:"";position:fixed;inset:0 0 auto;height:env(safe-area-inset-top,0px);z-index:30;background:var(--surface)}
+button,input,select,textarea{font:inherit;color:inherit}
+a{color:var(--heading)}
+:focus-visible{outline:3px solid var(--orange);outline-offset:2px}
+h1,h2,h3{margin:0;text-wrap:balance}
+.num{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+
+/* estrutura */
+.shell{display:flex;min-height:100%}
+.side{width:236px;flex:none;background:var(--surface);border-right:1px solid var(--line);padding:20px 12px;display:flex;flex-direction:column;gap:2px;position:sticky;top:0;height:100vh;overflow:auto}
+.side .logo{margin:0 8px 18px;background:var(--logo-bg);border-radius:8px;padding:4px 6px}
+.side .logo img{display:block;width:180px;height:auto}
+.nav-i{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:8px;border:0;background:none;color:var(--fg-2);font-weight:600;font-size:15px;text-align:left;cursor:pointer;width:100%}
+.nav-i:hover{background:var(--surface-2)}
+.nav-i[aria-current="page"]{background:var(--primary);color:var(--on-primary)}
+.nav-i .badge{margin-left:auto}
+.side .sep{height:1px;background:var(--line);margin:10px 8px}
+.side .who{margin-top:auto;padding:12px;border-top:1px solid var(--line);display:flex;flex-direction:column;gap:6px}
+.main{flex:1;min-width:0;display:flex;flex-direction:column}
+.content{flex:1;width:100%;max-width:1180px;margin:0 auto;padding-block:22px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;flex-direction:column;gap:16px}
+.with-panel{display:flex;gap:20px;align-items:flex-start}
+.with-panel>.col{flex:1;min-width:0;display:flex;flex-direction:column;gap:16px}
+.panel{width:290px;flex:none;display:flex;flex-direction:column;gap:12px;position:sticky;top:22px}
+.mtop{display:none}
+.bnav{display:none}
+.fab{display:none}
+@media (max-width:1180px){.panel{display:none}}
+@media (max-width:820px){
+  .side{display:none}
+  .mtop{display:flex;align-items:center;justify-content:space-between;gap:10px;position:sticky;top:env(safe-area-inset-top,0px);z-index:20;background:var(--surface);border-bottom:1px solid var(--line);padding-block:10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .mtop .logo{background:var(--logo-bg);border-radius:6px;padding:2px 4px}
+  .mtop img{height:28px;width:auto;display:block}
+  .content{padding-bottom:calc(150px + env(safe-area-inset-bottom,0px));padding-top:16px}
+  .bnav{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding-bottom:env(safe-area-inset-bottom,0px);padding-left:env(safe-area-inset-left,0px);padding-right:env(safe-area-inset-right,0px)}
+  .bnav button{border:0;background:none;display:flex;flex-direction:column;align-items:center;gap:3px;padding:10px 0 8px;font-size:12px;font-weight:600;color:var(--muted);position:relative;cursor:pointer;min-height:60px}
+  .bnav button[aria-current="page"]{color:var(--heading);font-weight:800}
+  .bnav .badge{position:absolute;top:6px;left:58%}
+  .fab{display:flex;position:fixed;right:max(16px,env(safe-area-inset-right,0px));bottom:calc(76px + env(safe-area-inset-bottom,0px));z-index:21;height:56px;padding:0 22px;border-radius:28px;border:0;background:var(--primary);color:var(--on-primary);align-items:center;gap:8px;font-weight:800;font-size:16px;box-shadow:0 6px 16px rgba(11,42,107,.3);cursor:pointer}
+  .hide-m{display:none!important}
+}
+
+/* componentes */
+.page-h{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.page-h h1{font-family:var(--f-display);font-size:30px;font-weight:800;color:var(--heading);letter-spacing:.2px}
+.page-h .sub{color:var(--muted);font-size:14px}
+.page-h .right{margin-left:auto;display:flex;gap:8px;flex-wrap:wrap}
+.card{background:var(--surface);border-radius:14px;box-shadow:var(--shadow);border:1px solid var(--line)}
+.card.pad{padding:16px}
+.card h2{font-size:17px;font-weight:800}
+.stack{display:flex;flex-direction:column;gap:10px}
+.row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.btn{height:44px;padding:0 16px;border-radius:10px;border:1px solid var(--line-2);background:var(--surface);color:var(--heading);font-weight:700;font-size:15px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center;gap:8px;text-decoration:none;white-space:nowrap}
+.btn:hover{background:var(--surface-2)}
+.btn.primary{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.btn.primary:hover{filter:brightness(1.1)}
+.btn.orange{background:var(--orange);border-color:var(--orange);color:var(--on-orange)}
+.btn.danger{color:var(--bad)}
+.btn.sm{height:36px;padding:0 12px;font-size:14px;border-radius:8px}
+.btn.block{width:100%;height:52px;font-size:16px}
+.btn:disabled{opacity:.5;cursor:not-allowed}
+.plate{font-weight:800;letter-spacing:.6px;font-size:14px;background:var(--surface-2);border:1px solid var(--line-2);border-radius:6px;padding:1px 8px;white-space:nowrap;color:var(--fg)}
+.pill{display:inline-flex;align-items:center;font-size:12px;font-weight:700;border-radius:20px;padding:3px 10px;white-space:nowrap}
+.pill.neutral{background:var(--surface-2);color:var(--fg-2)}
+.pill.info{background:var(--info-bg);color:var(--info)}
+.pill.warn{background:var(--warn-bg);color:var(--warn)}
+.pill.bad{background:var(--bad-bg);color:var(--bad)}
+.pill.ok{background:var(--ok-bg);color:var(--ok)}
+.pill.urg{background:var(--orange);color:var(--on-orange);font-weight:800;letter-spacing:.4px}
+.pill.prog{background:var(--primary);color:var(--on-primary);font-weight:800;letter-spacing:.4px}
+.badge{background:var(--orange);color:var(--on-orange);font-size:11px;font-weight:800;border-radius:10px;padding:1px 7px;line-height:1.5}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+.seg{display:grid;grid-auto-flow:column;grid-auto-columns:1fr;background:var(--surface-2);border-radius:12px;padding:4px;gap:4px;border:1px solid var(--line)}
+.seg button{border:0;border-radius:9px;background:transparent;color:var(--fg-2);font-weight:600;font-size:15px;height:42px;cursor:pointer}
+.seg button[aria-pressed="true"]{background:var(--orange);color:var(--on-orange);font-weight:800}
+.seg.blue button[aria-pressed="true"]{background:var(--primary);color:var(--on-primary)}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{border:1px solid var(--line-2);background:var(--surface);border-radius:20px;padding:0 14px;height:36px;font-size:14px;font-weight:600;cursor:pointer;color:var(--fg-2)}
+.chip[aria-pressed="true"]{background:var(--primary);border-color:var(--primary);color:var(--on-primary)}
+.chip.plate-chip{border-radius:8px;font-weight:800;letter-spacing:.5px;height:42px}
+
+/* fila */
+.qhead{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
+.dot{width:10px;height:10px;border-radius:5px;flex:none}
+.qrow{display:grid;grid-template-columns:64px 100px minmax(0,1fr) 130px 190px 96px 62px;gap:12px;align-items:center;padding:11px 16px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;cursor:pointer;font-size:14px;color:var(--fg)}
+.qrow:hover{background:var(--surface-2)}
+.qrow:last-child{border-bottom:0}
+.qscroll{overflow-x:auto}
+.qscroll .qrow{min-width:780px}
+.qcard{display:flex;flex-direction:column;gap:7px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow);text-align:left;width:100%;cursor:pointer;color:var(--fg)}
+.qcard .t{font-size:17px;font-weight:700;line-height:1.25}
+.qcard .meta{display:flex;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap;align-items:center}
+.qlist-m{display:none;flex-direction:column;gap:10px}
+@media (max-width:820px){.qdesk{display:none}.qlist-m{display:flex}}
+.empty{padding:28px 16px;text-align:center;color:var(--muted)}
+.tag-sug{font-size:11px;font-weight:700;color:var(--warn);border:1px dashed var(--warn);border-radius:20px;padding:1px 8px}
+
+/* stats */
+.stat{background:var(--surface);border:1px solid var(--line);border-radius:12px;padding:12px}
+.stat .l{display:block;font-size:12px;color:var(--muted)}
+.stat .v{font-size:24px;font-weight:800;font-variant-numeric:tabular-nums}
+.stat.hero{background:var(--bar);color:var(--on-bar);border:0}
+.stat.hero .l{color:var(--on-bar-2)}
+.stat.hero .v{font-size:28px}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.bar{height:8px;border-radius:4px;background:var(--primary)}
+.mstats{display:none;gap:8px;overflow-x:auto}
+@media (max-width:1180px){.mstats{display:flex}.mstats .stat{flex:1 0 140px}}
+
+/* formulários */
+.field{display:flex;flex-direction:column;gap:6px}
+.field>label,.field>.lbl{font-size:14px;font-weight:700;color:var(--fg-2)}
+.input,select.input,textarea.input{width:100%;min-height:46px;border:1px solid var(--line-2);border-radius:10px;padding:10px 12px;background:var(--surface);font-size:16px}
+textarea.input{resize:vertical;min-height:84px}
+.hint{font-size:12px;color:var(--muted)}
+.fgrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+@media (max-width:560px){.fgrid{grid-template-columns:1fr}}
+.photos{display:grid;grid-template-columns:repeat(auto-fill,minmax(76px,1fr));gap:8px}
+.photo{aspect-ratio:1;max-width:100%;border-radius:10px;overflow:hidden;position:relative;background:var(--surface-2);border:0;padding:0;cursor:zoom-in}
+.photo img{width:100%;height:100%;object-fit:cover;display:block}
+.photo .x{position:absolute;top:4px;right:4px;width:26px;height:26px;border-radius:13px;border:0;background:rgba(0,0,0,.6);color:#fff;font-weight:800;cursor:pointer}
+.addphoto{aspect-ratio:1;max-width:100%;border-radius:10px;border:2px dashed var(--line-2);display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;color:var(--heading);font-size:12px;font-weight:700;cursor:pointer;background:var(--surface)}
+.addphoto input{position:absolute;width:1px;height:1px;opacity:0}
+.switch{display:flex;gap:12px;align-items:flex-start;padding:12px;border-radius:12px;border:1px solid var(--line-2);background:var(--surface);cursor:pointer}
+.switch input{width:22px;height:22px;margin:2px 0 0;accent-color:var(--bad);flex:none}
+.switch.on{border-color:var(--bad);background:var(--bad-bg)}
+.emerg{border:1px solid var(--bad);border-radius:12px;padding:12px;display:flex;flex-direction:column;gap:12px}
+
+/* detalhe */
+.dhead{display:flex;flex-direction:column;gap:10px}
+.dhead .top{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.dhead h1{font-family:var(--f-display);font-size:28px;font-weight:800;color:var(--heading);line-height:1.15}
+.steps{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px}
+.steps span{height:6px;border-radius:3px;background:var(--line-2)}
+.steps span.done{background:var(--primary)}
+.steps span.now{background:var(--orange)}
+.steps-l{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:4px;font-size:11px;font-weight:600;color:var(--muted)}
+.steps-l .now{color:var(--warn);font-weight:800}
+.dgrid{display:flex;gap:16px;align-items:flex-start;flex-wrap:wrap}
+.dgrid>.a{flex:1 1 320px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.dgrid>.b{flex:2 1 460px;min-width:0;display:flex;flex-direction:column;gap:14px}
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 14px;font-size:14px}
+.kv dt{color:var(--muted)}
+.kv dd{margin:0;font-weight:600;min-width:0}
+.hist{display:flex;flex-direction:column;gap:8px;font-size:13px}
+.hist div{display:grid;grid-template-columns:92px 1fr;gap:8px}
+.compra{border:1px solid var(--line);border-radius:14px;background:var(--surface);overflow:hidden}
+.compra .ch{display:flex;gap:10px;align-items:center;flex-wrap:wrap;padding:12px 16px;border-bottom:1px solid var(--line)}
+.compra .ch h3{font-size:16px;font-weight:800}
+.cot{display:grid;grid-template-columns:28px minmax(140px,1fr) auto;gap:4px 10px;align-items:center;padding:12px 16px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;cursor:pointer;color:var(--fg)}
+.cot:disabled{cursor:default}
+.cot .radio{width:18px;height:18px;border-radius:9px;border:2px solid var(--line-2)}
+.cot.sel{background:var(--sel)}
+.cot.sel .radio{border:5px solid var(--primary)}
+.cot .f{font-weight:700}
+.cot .v{font-weight:800;text-align:right;font-variant-numeric:tabular-nums}
+.cot .m{grid-column:2/4;font-size:13px;color:var(--muted)}
+.notice{border-radius:12px;padding:12px;font-size:14px;display:flex;flex-direction:column;gap:4px}
+.notice.warn{background:var(--warn-bg);color:var(--warn)}
+.notice.ok{background:var(--ok-bg);color:var(--ok)}
+.notice.bad{background:var(--bad-bg);color:var(--bad)}
+.notice.info{background:var(--info-bg);color:var(--info)}
+.notice b{font-weight:800}
+.actions{display:flex;gap:10px;flex-wrap:wrap;padding:12px 16px;border-top:1px solid var(--line)}
+
+/* OC */
+.ocbig{background:var(--bar);color:var(--on-bar);border-radius:16px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
+.ocbig .l{font-size:12px;font-weight:700;letter-spacing:1.2px;color:var(--on-bar-2)}
+.ocbig .n{font-family:var(--f-display);font-size:48px;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1.1}
+.olist{display:flex;flex-direction:column}
+.orow{display:grid;grid-template-columns:120px 100px minmax(160px,1fr) 120px 150px;gap:12px;align-items:center;padding:12px 16px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;cursor:pointer;color:var(--fg);font-size:14px}
+.orow:hover{background:var(--surface-2)}
+@media (max-width:820px){.orow{grid-template-columns:1fr auto;gap:4px 10px}.orow .hm{display:none}}
+
+/* modal e toast */
+.modal{position:fixed;inset:0;z-index:50;background:rgba(6,15,35,.55);display:flex;align-items:flex-end;justify-content:center;padding:max(12px,env(safe-area-inset-top,0px)) max(12px,env(safe-area-inset-right,0px)) 0 max(12px,env(safe-area-inset-left,0px))}
+@media (min-width:821px){.modal{align-items:center;padding:24px}}
+.sheet{background:var(--surface);color:var(--fg);width:100%;max-width:560px;max-height:92vh;overflow:auto;border-radius:18px 18px 0 0;padding:18px 16px calc(18px + env(safe-area-inset-bottom,0px));display:flex;flex-direction:column;gap:14px}
+@media (min-width:821px){.sheet{border-radius:18px;padding:22px}}
+.sheet h2{font-family:var(--f-display);font-size:24px;font-weight:800;color:var(--heading)}
+.sheet .foot{display:flex;gap:10px;justify-content:flex-end;flex-wrap:wrap}
+.viewer img{width:100%;height:auto;border-radius:10px}
+.toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;max-width:min(92vw,480px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
+@media (min-width:821px){.toast{bottom:28px}}
+.toast.bad{background:var(--bad);color:#fff}
+
+/* login */
+.login{min-height:100%;display:flex;align-items:center;justify-content:center;padding-block:32px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.login .box{width:100%;max-width:420px;display:flex;flex-direction:column;gap:18px}
+.login .logo{background:var(--logo-bg);border-radius:10px;padding:8px;align-self:center}
+.login .logo img{width:300px;max-width:100%;display:block}
+.ubtn{display:flex;align-items:center;gap:12px;padding:12px 14px;border:1px solid var(--line);border-radius:12px;background:var(--surface);cursor:pointer;width:100%;text-align:left;color:var(--fg)}
+.ubtn:hover{border-color:var(--primary)}
+.av{width:38px;height:38px;border-radius:19px;background:var(--primary);color:var(--on-primary);font-weight:800;display:flex;align-items:center;justify-content:center;flex:none;font-size:14px}
+.banner{background:var(--info-bg);color:var(--info);border-radius:12px;padding:10px 14px;font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.tbl{width:100%;border-collapse:collapse;font-size:14px}
+.tbl th{text-align:left;font-size:12px;color:var(--muted);font-weight:700;padding:10px 12px;background:var(--surface-2)}
+.tbl td{padding:10px 12px;border-top:1px solid var(--line);vertical-align:middle}
+
+/* visual do esboço */
+.m-only{display:none}
+.hero{background:var(--bar);color:var(--on-bar);border-radius:16px;padding:18px 22px 20px;display:flex;flex-direction:column;gap:10px}
+.hero .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.hbtn{width:44px;height:44px;margin-left:-10px;border:0;background:none;color:var(--on-bar);display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;flex:none}
+.hbtn:hover{background:var(--bar-hover)}
+.plate.inv{background:var(--plate-inv-bg);color:var(--plate-inv-fg);border-color:var(--plate-inv-bg);font-size:15px}
+.hnum{color:var(--on-bar-2);font-size:14px}
+.hpills{display:flex;gap:6px;margin-left:auto;align-items:center}
+.tag-sug.inv{color:var(--orange);border-color:var(--orange)}
+.hero h1{font-family:var(--f-display);font-size:30px;font-weight:800;line-height:1.15;color:var(--on-bar)}
+.hfoot{display:flex;align-items:flex-end;gap:10px;flex-wrap:wrap}
+.thumbs{display:flex;gap:6px;align-items:flex-end}
+.thumb{width:56px;height:56px;border-radius:8px;overflow:hidden;border:0;padding:0;background:var(--surface-2);cursor:zoom-in;flex:none}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.hmeta{color:var(--on-bar-2);font-size:13px}
+.hst{margin-left:auto}
+.subbar{display:flex;align-items:center;gap:12px}
+.subbar h1{font-family:var(--f-display);font-size:30px;font-weight:800;color:var(--heading)}
+.subbar .hbtn{color:var(--heading);margin-left:-6px}
+.subbar .hbtn:hover{background:var(--surface-2)}
+.sb-hint{margin-left:auto;color:var(--muted);font-size:13px}
+.cot{grid-template-columns:28px minmax(150px,1fr) 140px 120px 120px 60px;gap:4px 12px}
+.cot-h{display:grid;grid-template-columns:28px minmax(150px,1fr) 140px 120px 120px 60px;gap:0 12px;padding:9px 16px;font-size:12px;font-weight:700;color:var(--muted);background:var(--surface-2);border-bottom:1px solid var(--line)}
+.cot .v{text-align:left}
+.cot .c-d{font-size:14px;color:var(--fg-2)}
+.cot .m{grid-column:2/-1}
+.cot .m-mob{display:none}
+.cot.sel{box-shadow:inset 4px 0 0 var(--primary)}
+.lnk{text-decoration:underline;cursor:pointer;color:var(--heading);font-weight:600}
+.lnk.bad{color:var(--bad)}
+.alc{display:flex;gap:6px;flex-wrap:wrap;margin-top:4px}
+.ocok{display:flex;flex-direction:column;align-items:center;gap:8px;text-align:center;color:var(--fg-2);font-weight:600;padding-top:6px}
+.okc{width:64px;height:64px;border-radius:32px;background:var(--ok-bg);color:var(--ok);display:flex;align-items:center;justify-content:center}
+.lines{display:flex;flex-direction:column;padding:2px 16px}
+.lines .ln{display:flex;justify-content:space-between;gap:12px;padding:12px 0;border-bottom:1px solid var(--line);font-size:15px}
+.lines .ln:last-child{border-bottom:0}
+.lines .ln span{color:var(--muted)}
+.lines .ln b{text-align:right;font-weight:700;min-width:0}
+.actbar{display:none}
+@media (min-width:821px){.dgrid>.a{order:-1}}
+@media (max-width:820px){
+  .m-only{display:inline-block}
+  .chips{flex-wrap:nowrap;overflow-x:auto;margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)));padding:0 max(16px, env(safe-area-inset-left,0px)) 4px;scrollbar-width:none}
+  .chips::-webkit-scrollbar{display:none}
+  .chip{flex:none}
+  .banner.ex{padding:8px 12px;font-size:12px;flex-wrap:nowrap}
+  .banner.ex .btn{height:32px;font-size:13px;padding:0 10px}
+  select.chip{padding:0 12px;appearance:auto}
+  body[data-sub="1"] .bnav, body[data-sub="1"] .mtop{display:none}
+  body[data-view="demanda"]::before, body[data-view="nova"]::before{background:var(--bar)}
+  body[data-sub="1"] .content{padding-bottom:calc(104px + env(safe-area-inset-bottom,0px))}
+  .hero,.subbar{margin-inline:calc(-1 * max(16px, env(safe-area-inset-left,0px)));margin-top:-16px;border-radius:0;padding:8px max(16px, env(safe-area-inset-left,0px)) 18px}
+  .hero h1{font-size:22px}
+  .hpills{margin-left:0}
+  .subbar{background:var(--bar);padding-bottom:10px}
+  .subbar h1{color:var(--on-bar);font-size:22px}
+  .subbar .hbtn{color:var(--on-bar)}
+  .subbar .hbtn:hover{background:var(--bar-hover)}
+  .subbar .sb-hint{color:var(--on-bar-2)}
+  .subbar.light{background:var(--surface);border-bottom:1px solid var(--line)}
+  .subbar.light h1,.subbar.light .hbtn{color:var(--heading)}
+  .subbar.light .hbtn:hover{background:var(--surface-2)}
+  .form-card{background:none;border:0;box-shadow:none;padding:0}
+  .submitbar,.actbar{display:flex;gap:10px;position:fixed;left:0;right:0;bottom:0;z-index:20;background:var(--surface);border-top:1px solid var(--line);padding:12px max(16px,env(safe-area-inset-right,0px)) calc(14px + env(safe-area-inset-bottom,0px)) max(16px,env(safe-area-inset-left,0px))}
+  .actbar .btn,.submitbar .btn{height:54px;font-size:16px;flex:1}
+  .actbar .btn.primary{flex:2}
+  .compra[data-bar] .pri-act{display:none}
+  .cot,.cot-h{grid-template-columns:28px minmax(0,1fr) auto}
+  .cot .c-d,.cot-h{display:none}
+  .cot .m-mob{display:block}
+  .cot .v{text-align:right}
+}
+</style>
+
+
+<style>:root{padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}body{margin:0}[hidden]{display:none!important}img{max-width:100%}</style>
+</head>
+<body>
+<div id="app"></div>
+<div id="modal-root"></div>
+<div id="toast-root"></div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.js"></script>
+<script src="config.js"></script>
+<script>
+'use strict';
+/* =========================================================
+   BARRETO MANUTENÇÃO
+   Camada de dados: hoje grava no navegador (localStorage).
+   Na etapa Supabase, só o objeto `api` e as funções load/persist mudam;
+   as telas continuam iguais.
+   ========================================================= */
+
+const PERFIS = { motorista:'Motorista', mecanico:'Mecânico', analista:'Analista operacional', gestor:'Gestor' };
+const LS_DATA = 'barreto-manutencao-v1';
+const LS_USER = 'barreto-manutencao-user';
+const LS_TAB = 'barreto-manutencao-tab';
+const CFG = window.BARRETO_CONFIG || {};
+const REMOTE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
+let sb = null;
+
+const ICON = {
+  fila:'<path d="M4 6h16M4 12h16M4 18h10"/>',
+  check:'<path d="M5 12l4 4 10-10"/>',
+  doc:'<rect x="5" y="3" width="14" height="18" rx="2"/><path d="M9 8h6M9 12h6M9 16h4"/>',
+  more:'<circle cx="5" cy="12" r="1.5"/><circle cx="12" cy="12" r="1.5"/><circle cx="19" cy="12" r="1.5"/>',
+  plus:'<path d="M12 5v14M5 12h14"/>',
+  cam:'<rect x="3" y="6" width="18" height="14" rx="2"/><circle cx="12" cy="13" r="3.5"/><path d="M8 6l1.5-2h5L16 6"/>',
+  back:'<path d="M15 5l-7 7 7 7"/>',
+  truck:'<path d="M3 7h11v9H3zM14 10h4l3 3v3h-7z"/><circle cx="7" cy="17.5" r="1.8"/><circle cx="17" cy="17.5" r="1.8"/>',
+  store:'<path d="M4 9l1.5-5h13L20 9M4 9h16v11H4zM9 20v-6h6v6"/>',
+  users:'<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 4.5a3.5 3.5 0 010 7M18 14.8c1.8.7 3 2.4 3.5 5.2"/>',
+  gear:'<circle cx="12" cy="12" r="3"/><path d="M12 2v3M12 19v3M2 12h3M19 12h3M4.9 4.9l2.1 2.1M17 17l2.1 2.1M4.9 19.1L7 17M17 7l2.1-2.1"/>',
+  chart:'<path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/>',
+  out:'<path d="M15 4h4v16h-4M10 8l-4 4 4 4M6 12h10"/>',
+  copy:'<rect x="8" y="8" width="12" height="12" rx="2"/><path d="M16 8V5a1 1 0 00-1-1H5a1 1 0 00-1 1v10a1 1 0 001 1h3"/>',
+  info:'<circle cx="12" cy="12" r="9"/><path d="M12 8v5M12 16v.5"/>',
+  x:'<path d="M6 6l12 12M18 6L6 18"/>'
+};
+const ic = (n, s=22, w=2) => `<svg aria-hidden="true" width="${s}" height="${s}" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="${w}" stroke-linecap="round" stroke-linejoin="round">${ICON[n]}</svg>`;
+
+/* ---------- utilidades ---------- */
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const uid = () => Date.now().toString(36) + Math.random().toString(36).slice(2, 7);
+const now = () => new Date().toISOString();
+const fmtR = v => (v == null || v === '' || isNaN(v)) ? '—' : Number(v).toLocaleString('pt-BR', { style:'currency', currency:'BRL' });
+const parseR = s => { s = String(s ?? '').replace(/[^\d,.-]/g, ''); if (s.includes(',')) s = s.replace(/\./g, '').replace(',', '.'); const n = parseFloat(s); return isNaN(n) ? null : n; };
+const fmtDT = iso => iso ? new Date(iso).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' }) : '—';
+const fmtD = iso => iso ? new Date(iso).toLocaleDateString('pt-BR') : '—';
+function rel(iso){
+  if (!iso) return '';
+  const m = Math.round((Date.now() - new Date(iso)) / 60000);
+  if (m < 1) return 'agora';
+  if (m < 60) return `há ${m} min`;
+  const h = Math.round(m / 60);
+  if (h < 24) return `há ${h} h`;
+  const d = Math.round(h / 24);
+  return d === 1 ? 'ontem' : `há ${d} dias`;
+}
+const initials = n => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+const normPlaca = p => String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^([A-Z]{3})([0-9A-Z]{4})$/, '$1-$2');
+
+/* ---------- dados ---------- */
+function defaultConfig(){
+  return {
+    alcada: { motorista: 0, mecanico: 300, analista: 1000 },     // gestor: sem limite
+    faixas: [ { ate: 500, n: 1 }, { ate: 2000, n: 2 }, { ate: null, n: 3 } ],
+    tetoEmergencial: 3000,
+    prazoRegularizacaoH: 48,
+    toleranciaNF: 10
+  };
+}
+function seed(){
+  const H = h => new Date(Date.now() - h * 3600e3).toISOString();
+  const users = [
+    { id:'u1', nome:'Douglas Barreto', perfil:'gestor', placa:'' },
+    { id:'u2', nome:'Analista (exemplo)', perfil:'analista', placa:'' },
+    { id:'u3', nome:'Mecânico (exemplo)', perfil:'mecanico', placa:'' },
+    { id:'u4', nome:'Motorista 1 (exemplo)', perfil:'motorista', placa:'BRT-1A23' },
+    { id:'u5', nome:'Motorista 2 (exemplo)', perfil:'motorista', placa:'BRT-4C56' }
+  ];
+  const veiculos = [
+    { id:'v1', placa:'BRT-1A23', descricao:'Cavalo (exemplo)' },
+    { id:'v2', placa:'BRT-4C56', descricao:'Cavalo (exemplo)' },
+    { id:'v3', placa:'BRT-7E89', descricao:'Cavalo (exemplo)' },
+    { id:'v4', placa:'BRT-2B34', descricao:'Carreta (exemplo)' }
+  ];
+  const fornecedores = [
+    { id:'f1', nome:'Autopeças Exemplo', cnpj:'', cidade:'Itapeva/SP', telefone:'', categoria:'Peças', provisorio:false },
+    { id:'f2', nome:'Oficina de Freios Exemplo', cnpj:'', cidade:'Itapeva/SP', telefone:'', categoria:'Serviços', provisorio:false },
+    { id:'f3', nome:'Borracharia Exemplo', cnpj:'', cidade:'', telefone:'', categoria:'Pneus', provisorio:false }
+  ];
+  const m1 = { id:'m1', num:'M-0001', placa:'BRT-1A23', descricao:'Vazamento de ar no freio do cavalo, compressor ligando toda hora', tipo:'ambos',
+    prioridade:'urgente', prioridadeConfirmada:true, abertoPor:'u4', abertoEm:H(1.2), atendidoPor:'u3', fotos:[], encerradaEm:null, cancelada:false,
+    historico:[ {em:H(1.2), por:'u4', txt:'Abriu a demanda'}, {em:H(1.1), por:'u1', txt:'Confirmou como urgente'}, {em:H(0.8), por:'u2', txt:'Lançou 3 cotações'}, {em:H(0.6), por:'u2', txt:'Enviou para aprovação'} ],
+    compras:[ { id:'c1', descricao:'Válvula + mão de obra', tipo:'ambos', status:'aprovacao', escolhidaId:'q1', justificativa:'Prazo: caminhão carregado aguardando', dispensa:null,
+      solicitadaEm:H(0.6), solicitadaPor:'u2', ocId:null, motivoReprova:null,
+      cotacoes:[ {id:'q1', fornecedorId:'f1', valor:1380, prazo:'Hoje 16h', pagamento:'28 dias', obs:'', anexo:null, por:'u2', em:H(0.8)},
+                 {id:'q2', fornecedorId:'f2', valor:1520, prazo:'Amanhã 10h', pagamento:'À vista', obs:'', anexo:null, por:'u2', em:H(0.8)},
+                 {id:'q3', fornecedorId:'f3', valor:1295, prazo:'2 dias', pagamento:'14 dias', obs:'', anexo:null, por:'u2', em:H(0.8)} ] } ] };
+  const m2 = { id:'m2', num:'M-0002', placa:'BRT-4C56', descricao:'Pneu estourado na estrada', tipo:'peca',
+    prioridade:'urgente', prioridadeConfirmada:true, abertoPor:'u5', abertoEm:H(2.5), atendidoPor:'u5', fotos:[], encerradaEm:null, cancelada:false,
+    historico:[ {em:H(2.5), por:'u5', txt:'Abriu demanda com compra emergencial'} ],
+    compras:[ { id:'c2', descricao:'Pneu estourado na estrada', tipo:'peca', status:'aprovada', escolhidaId:'q4', justificativa:'Parado na estrada', dispensa:'Compra emergencial',
+      solicitadaEm:H(2.5), solicitadaPor:'u5', ocId:'o1', motivoReprova:null,
+      cotacoes:[ {id:'q4', fornecedorId:'f3', valor:2150, prazo:'Imediato', pagamento:'', obs:'', anexo:null, por:'u5', em:H(2.5)} ] } ] };
+  const m3 = { id:'m3', num:'M-0003', placa:'BRT-7E89', descricao:'Troca de lona de freio, eixo traseiro', tipo:'ambos',
+    prioridade:'programada', prioridadeConfirmada:true, abertoPor:'u3', abertoEm:H(26), atendidoPor:'u3', fotos:[], encerradaEm:null, cancelada:false,
+    historico:[ {em:H(26), por:'u3', txt:'Abriu a demanda'} ], compras:[] };
+  const m4 = { id:'m4', num:'M-0004', placa:'BRT-2B34', descricao:'Lâmpada do farol e sensor do ABS', tipo:'peca',
+    prioridade:'programada', prioridadeConfirmada:false, abertoPor:'u3', abertoEm:H(30), atendidoPor:null, fotos:[], encerradaEm:null, cancelada:false,
+    historico:[ {em:H(30), por:'u3', txt:'Abriu a demanda'} ],
+    compras:[ { id:'c3', descricao:'Lâmpada + sensor ABS', tipo:'peca', status:'aprovada', escolhidaId:'q5', justificativa:'', dispensa:null,
+      solicitadaEm:H(28), solicitadaPor:'u3', ocId:'o2', motivoReprova:null,
+      cotacoes:[ {id:'q5', fornecedorId:'f1', valor:280, prazo:'Hoje', pagamento:'28 dias', obs:'', anexo:null, por:'u3', em:H(28)} ] } ] };
+  const ordens = [
+    { id:'o1', num:'OC 26-0001', manutencaoId:'m2', compraId:'c2', placa:'BRT-4C56', fornecedorId:'f3', valor:2150, tipo:'peca', emergencial:true,
+      aprovadoPor:'u5', aprovadoEm:H(2.5), regularizarAte:new Date(Date.now() + 45.5*3600e3).toISOString(), revisadaPor:null, nf:null, status:'aberta' },
+    { id:'o2', num:'OC 26-0002', manutencaoId:'m4', compraId:'c3', placa:'BRT-2B34', fornecedorId:'f1', valor:280, tipo:'peca', emergencial:false,
+      aprovadoPor:'u3', aprovadoEm:H(27.5), regularizarAte:null, revisadaPor:null, nf:null, status:'aberta' }
+  ];
+  return { v:1, exemplo:true, config:defaultConfig(), users, veiculos, fornecedores, manutencoes:[m1,m2,m3,m4], ordens, seq:{ M:4, OC:{ '26':2 } } };
+}
+
+let S;
+function load(){
+  try { const r = localStorage.getItem(LS_DATA); if (r) return JSON.parse(r); } catch (e) {}
+  return seed();
+}
+function persist(){
+  try { localStorage.setItem(LS_DATA, JSON.stringify(S)); return true; }
+  catch (e) { toast('O navegador ficou sem espaço. Use menos fotos ou fotos menores.', true); return false; }
+}
+const lsGet = k => { try { return localStorage.getItem(k); } catch (e) { return null; } };
+const lsSet = (k, v) => { try { v == null ? localStorage.removeItem(k) : localStorage.setItem(k, v); } catch (e) {} };
+
+/* ---------- consultas ---------- */
+const user = id => S.users.find(u => u.id === id);
+const forn = id => S.fornecedores.find(f => f.id === id);
+const manut = id => S.manutencoes.find(m => m.id === id);
+const ordem = id => S.ordens.find(o => o.id === id);
+const nomeU = id => user(id)?.nome || '—';
+const nomeF = id => forn(id)?.nome || '—';
+const alcada = u => u.perfil === 'gestor' ? Infinity : (S.config.alcada[u.perfil] || 0);
+function cotNecessarias(valor){
+  for (const f of S.config.faixas) if (f.ate == null || valor <= f.ate) return f.n;
+  return 3;
+}
+const escolhida = c => c.cotacoes.find(q => q.id === c.escolhidaId);
+const valorCompra = c => escolhida(c)?.valor ?? null;
+const menorCot = c => c.cotacoes.reduce((a, q) => (!a || q.valor < a.valor) ? q : a, null);
+
+function statusManut(m){
+  if (m.cancelada) return 'cancelada';
+  if (m.encerradaEm) return 'encerrada';
+  const cs = m.compras.filter(c => c.status !== 'cancelada');
+  if (cs.some(c => c.status === 'aprovacao')) return 'aprovacao';
+  const ocs = cs.map(c => ordem(c.ocId)).filter(Boolean);
+  if (ocs.some(o => o.emergencial && !o.nf)) return 'emergencial';
+  if (cs.some(c => c.status === 'cotacao' || c.status === 'reprovada')) return 'cotacao';
+  if (ocs.some(o => o.status === 'divergente')) return 'divergente';
+  if (ocs.length) return ocs.every(o => o.nf) ? 'recebida' : 'execucao';
+  return 'aberta';
+}
+const ST = {
+  aberta:['Aberta','neutral'], cotacao:['Em cotação','info'], aprovacao:['Aguardando aprovação','warn'],
+  emergencial:['Emergencial · regularizar','bad'], divergente:['NF divergente','bad'], execucao:['OC aprovada · em execução','ok'],
+  recebida:['Recebida · pode encerrar','ok'], encerrada:['Encerrada','neutral'], cancelada:['Cancelada','neutral']
+};
+const stepIndex = s => ({ aberta:0, cotacao:1, aprovacao:2, emergencial:3, divergente:3, execucao:3, recebida:3, encerrada:5, cancelada:0 })[s] ?? 0;
+const pillSt = s => `<span class="pill ${ST[s][1]}">${ST[s][0]}</span>`;
+const pillPri = m => m.prioridade === 'urgente' ? '<span class="pill urg">URGENTE</span>' : '<span class="pill prog">PROGRAMADA</span>';
+
+const pode = {
+  cotar: u => u.perfil !== 'motorista',
+  prioridade: u => u.perfil === 'gestor',
+  cadastrarForn: u => u.perfil === 'analista' || u.perfil === 'gestor',
+  dispensar: u => u.perfil === 'analista' || u.perfil === 'gestor',
+  cancelar: u => u.perfil === 'analista' || u.perfil === 'gestor',
+  encerrar: u => u.perfil !== 'motorista',
+  editar: u => u.perfil === 'analista' || u.perfil === 'gestor',
+  cadastros: u => u.perfil === 'analista' || u.perfil === 'gestor',
+  config: u => u.perfil === 'gestor',
+  revisar: u => u.perfil === 'gestor'
+};
+function visiveis(u){
+  if (u.perfil !== 'motorista') return S.manutencoes;
+  return S.manutencoes.filter(m => m.abertoPor === u.id || (u.placa && m.placa === u.placa));
+}
+function pendentesAprovacao(u){
+  const out = [];
+  if (u.perfil === 'motorista') return out;
+  for (const m of S.manutencoes) for (const c of m.compras)
+    if (c.status === 'aprovacao' && (valorCompra(c) ?? 0) <= alcada(u)) out.push({ m, c });
+  return out;
+}
+const emergPendentes = () => S.ordens.filter(o => o.emergencial && o.status !== 'cancelada' && (!o.nf || !o.revisadaPor));
+const divergentes = () => S.ordens.filter(o => o.status === 'divergente');
+function contAprovar(u){
+  let n = pendentesAprovacao(u).length;
+  if (pode.revisar(u)) n += emergPendentes().filter(o => o.nf).length + divergentes().length;
+  return n;
+}
+
+/* ---------- api (trocar por Supabase depois) ---------- */
+function proxNum(tipo){
+  if (tipo === 'M') { S.seq.M++; return 'M-' + String(S.seq.M).padStart(4, '0'); }
+  const yy = String(new Date().getFullYear()).slice(2);
+  S.seq.OC[yy] = (S.seq.OC[yy] || 0) + 1;
+  return `OC ${yy}-${String(S.seq.OC[yy]).padStart(4, '0')}`;
+}
+const log = (m, txt) => m.historico.push({ em: now(), por: ME.id, txt });
+
+const apiLocal = {
+  async criarDemanda(d){
+    const m = { id: uid(), num: proxNum('M'), placa: d.placa, descricao: d.descricao, tipo: d.tipo,
+      prioridade: d.emergencial ? 'urgente' : d.prioridade, prioridadeConfirmada: ME.perfil === 'gestor' || !!d.emergencial,
+      abertoPor: ME.id, abertoEm: now(), atendidoPor: ME.perfil === 'mecanico' ? ME.id : null, fotos: d.fotos, encerradaEm: null, cancelada: false,
+      historico: [], compras: [] };
+    S.manutencoes.unshift(m);
+    log(m, d.fotos.length ? `Abriu a demanda com ${d.fotos.length} foto(s)` : 'Abriu a demanda');
+    let oc = null;
+    if (d.emergencial) {
+      const e = d.emergencial;
+      const c = { id: uid(), descricao: d.descricao, tipo: d.tipo, status: 'cotacao', escolhidaId: null, justificativa: e.justificativa,
+        dispensa: 'Compra emergencial', solicitadaEm: now(), solicitadaPor: ME.id, ocId: null, motivoReprova: null, cotacoes: [] };
+      const q = { id: uid(), fornecedorId: e.fornecedorId, valor: e.valor, prazo: 'Imediato', pagamento: e.pagamento || '', obs: '', anexo: null, por: ME.id, em: now() };
+      c.cotacoes.push(q); c.escolhidaId = q.id; m.compras.push(c);
+      if (e.valor <= S.config.tetoEmergencial) {
+        oc = gerarOC(m, c, true);
+        log(m, `Compra emergencial: ${oc.num} gerada na hora (${fmtR(e.valor)})`);
+      } else {
+        c.status = 'aprovacao';
+        log(m, `Compra emergencial acima do teto de ${fmtR(S.config.tetoEmergencial)}: enviada ao gestor como urgente`);
+      }
+    }
+    persist();
+    return { m, oc };
+  },
+  async definirPrioridade(m, p){ m.prioridade = p; m.prioridadeConfirmada = true; log(m, `Definiu como ${p}`); persist(); },
+  async atender(m){ m.atendidoPor = ME.id; log(m, 'Assumiu o atendimento'); persist(); },
+  async comentar(m, txt){ log(m, 'Comentário: ' + txt); persist(); },
+  async novaCompra(m, descricao, tipo){
+    const c = { id: uid(), descricao, tipo, status: 'cotacao', escolhidaId: null, justificativa: '', dispensa: null, solicitadaEm: null,
+      solicitadaPor: null, ocId: null, motivoReprova: null, cotacoes: [] };
+    m.compras.push(c); log(m, `Nova compra: ${descricao}`); persist(); return c;
+  },
+  async addCotacao(m, c, q){
+    q.id = uid(); q.por = ME.id; q.em = now(); c.cotacoes.push(q);
+    if (c.status === 'reprovada') c.status = 'cotacao';
+    const menor = menorCot(c); c.escolhidaId = menor.id;
+    log(m, `Cotação ${nomeF(q.fornecedorId)}: ${fmtR(q.valor)}`); persist();
+  },
+  async removerCotacao(m, c, qid){
+    c.cotacoes = c.cotacoes.filter(q => q.id !== qid);
+    if (c.escolhidaId === qid) c.escolhidaId = menorCot(c)?.id || null;
+    log(m, 'Removeu uma cotação'); persist();
+  },
+  async escolher(m, c, qid){ c.escolhidaId = qid; persist(); },
+  async enviarAprovacao(m, c, justificativa, dispensa){
+    if (justificativa != null) c.justificativa = justificativa;
+    if (dispensa) c.dispensa = dispensa;
+    c.status = 'aprovacao'; c.solicitadaEm = now(); c.solicitadaPor = ME.id; c.motivoReprova = null;
+    log(m, `Enviou ${fmtR(valorCompra(c))} para aprovação`); persist();
+  },
+  async aprovar(m, c, justificativa, dispensa){
+    if (justificativa != null) c.justificativa = justificativa;
+    if (dispensa) c.dispensa = dispensa;
+    if (!c.solicitadaEm) { c.solicitadaEm = now(); c.solicitadaPor = ME.id; }
+    const oc = gerarOC(m, c, false);
+    log(m, `Aprovou e gerou ${oc.num} (${fmtR(oc.valor)})`); persist(); return oc;
+  },
+  async reprovar(m, c, motivo){ c.status = 'reprovada'; c.motivoReprova = motivo; log(m, `Reprovou: ${motivo}`); persist(); },
+  async cancelarCompra(m, c){ c.status = 'cancelada'; log(m, `Cancelou a compra "${c.descricao}"`); persist(); },
+  async registrarNF(o, nf){
+    o.nf = { ...nf, por: ME.id, em: now() };
+    const lim = o.valor * (1 + S.config.toleranciaNF / 100);
+    o.status = nf.valor > lim ? 'divergente' : 'recebida';
+    const m = manut(o.manutencaoId);
+    if (m) log(m, `Registrou NF ${nf.numero || ''} de ${fmtR(nf.valor)} na ${o.num}` + (o.status === 'divergente' ? ' — acima da tolerância, foi para o gestor' : ''));
+    persist();
+    return o.status;
+  },
+  async aceitarDivergencia(o){
+    o.status = 'recebida'; o.divergenciaAceitaPor = ME.id;
+    const m = manut(o.manutencaoId); if (m) log(m, `Aceitou a diferença da NF na ${o.num}`); persist();
+  },
+  async revisarEmergencial(o){
+    o.revisadaPor = ME.id; o.revisadaEm = now();
+    const m = manut(o.manutencaoId); if (m) log(m, `Revisou a compra emergencial ${o.num}`); persist();
+  },
+  async encerrar(m){ m.encerradaEm = now(); log(m, 'Encerrou a manutenção'); persist(); },
+  async reabrir(m){ m.encerradaEm = null; log(m, 'Reabriu a manutenção'); persist(); },
+  async cancelarManut(m, motivo){ log(m, 'Motivo do cancelamento: ' + motivo); m.cancelada = true; log(m, 'Cancelou a manutenção'); persist(); },
+  async salvarFornecedor(f){
+    if (f.id) Object.assign(forn(f.id), f); else { f.id = uid(); S.fornecedores.push(f); }
+    persist(); return f;
+  },
+  async salvarVeiculo(v){
+    v.placa = normPlaca(v.placa);
+    if (v.id) Object.assign(S.veiculos.find(x => x.id === v.id), v); else { v.id = uid(); S.veiculos.push(v); }
+    persist();
+  },
+  async salvarUsuario(u){
+    if (u.id) Object.assign(user(u.id), u); else { u.id = uid(); S.users.push(u); }
+    persist();
+  },
+  async salvarConfig(c){ S.config = c; persist(); }
+};
+
+/* ---------- Supabase ---------- */
+const fotoURL = {};          // caminho no Storage → link assinado
+const histCache = {};        // histórico carregado sob demanda
+const num = v => v == null ? null : Number(v);
+async function rpc(fn, args){
+  const { data, error } = await sb.rpc(fn, args);
+  if (error) throw new Error(error.message);
+  return data;
+}
+async function run(fn, args){ await rpc(fn, args); await reload(); }
+async function assinar(paths){
+  const falta = [...new Set(paths.filter(p => p && !fotoURL[p]))];
+  if (!falta.length) return;
+  const { data } = await sb.storage.from('fotos').createSignedUrls(falta, 60 * 60 * 12);
+  (data || []).forEach(d => { if (d.signedUrl) fotoURL[d.path] = d.signedUrl; });
+}
+const furl = p => p ? (fotoURL[p] || '') : null;
+async function uploadFoto(dataUrl, pasta){
+  const blob = await (await fetch(dataUrl)).blob();
+  const path = `${pasta}/${new Date().toISOString().slice(0, 7)}/${uid()}.jpg`;
+  const { error } = await sb.storage.from('fotos').upload(path, blob, { contentType: 'image/jpeg', upsert: false });
+  if (error) throw new Error('Não consegui enviar a foto: ' + error.message);
+  fotoURL[path] = dataUrl;
+  return path;
+}
+async function reload(){
+  const q = async (b) => { const { data, error } = await b; if (error) throw new Error(error.message); return data; };
+  const [p, cfg, vs, fs, ms, cs, qs, os] = await Promise.all([
+    q(sb.from('profiles').select('*').order('nome')),
+    q(sb.from('config').select('*').eq('id', 1).single()),
+    q(sb.from('veiculos').select('*').eq('ativo', true).order('placa')),
+    q(sb.from('fornecedores').select('*').order('nome')),
+    q(sb.from('manutencoes').select('*').order('aberto_em', { ascending: false }).limit(1000)),
+    q(sb.from('compras').select('*').order('criado_em').limit(5000)),
+    q(sb.from('cotacoes').select('*').order('em').limit(10000)),
+    q(sb.from('ordens').select('*').order('aprovado_em', { ascending: false }).limit(5000))
+  ]);
+  await assinar([...ms.flatMap(m => m.fotos || []), ...qs.map(x => x.anexo), ...os.map(o => o.nf_foto)]);
+  const cotPor = {}; qs.forEach(x => (cotPor[x.compra_id] ||= []).push({ id: x.id, fornecedorId: x.fornecedor_id, valor: num(x.valor), prazo: x.prazo, pagamento: x.pagamento, obs: x.obs, anexo: furl(x.anexo), por: x.por, em: x.em }));
+  const compPor = {}; cs.forEach(c => (compPor[c.manutencao_id] ||= []).push({ id: c.id, descricao: c.descricao, tipo: c.tipo, status: c.status, escolhidaId: c.escolhida_id,
+    justificativa: c.justificativa, dispensa: c.dispensa, solicitadaEm: c.solicitada_em, solicitadaPor: c.solicitada_por, ocId: c.oc_id, motivoReprova: c.motivo_reprova, cotacoes: cotPor[c.id] || [] }));
+  S = {
+    v: 1, exemplo: false,
+    config: { alcada: { motorista: num(cfg.alcada_motorista), mecanico: num(cfg.alcada_mecanico), analista: num(cfg.alcada_analista) },
+      faixas: [ { ate: num(cfg.faixa1), n: 1 }, { ate: num(cfg.faixa2), n: 2 }, { ate: null, n: 3 } ],
+      tetoEmergencial: num(cfg.teto_emergencial), prazoRegularizacaoH: cfg.prazo_regularizacao_h, toleranciaNF: num(cfg.tolerancia_nf) },
+    users: p.map(u => ({ id: u.id, nome: u.nome || u.email, email: u.email, perfil: u.perfil, placa: u.placa, ativo: u.ativo })),
+    veiculos: vs.map(v => ({ id: v.id, placa: v.placa, descricao: v.descricao })),
+    fornecedores: fs.map(f => ({ id: f.id, nome: f.nome, cnpj: f.cnpj, cidade: f.cidade, telefone: f.telefone, categoria: f.categoria, provisorio: f.provisorio })),
+    manutencoes: ms.map(m => ({ id: m.id, num: m.num, placa: m.placa, descricao: m.descricao, tipo: m.tipo, prioridade: m.prioridade, prioridadeConfirmada: m.prioridade_confirmada,
+      abertoPor: m.aberto_por, abertoEm: m.aberto_em, atendidoPor: m.atendido_por, fotos: (m.fotos || []).map(furl).filter(Boolean), encerradaEm: m.encerrada_em, cancelada: m.cancelada,
+      historico: histCache[m.id] || [], compras: compPor[m.id] || [] })),
+    ordens: os.map(o => ({ id: o.id, num: o.num, manutencaoId: o.manutencao_id, compraId: o.compra_id, placa: o.placa, fornecedorId: o.fornecedor_id, valor: num(o.valor), tipo: o.tipo,
+      emergencial: o.emergencial, aprovadoPor: o.aprovado_por, aprovadoEm: o.aprovado_em, regularizarAte: o.regularizar_ate, revisadaPor: o.revisada_por, status: o.status,
+      nf: o.nf_em ? { numero: o.nf_numero, valor: num(o.nf_valor), foto: furl(o.nf_foto), por: o.nf_por, em: o.nf_em } : null })),
+    seq: {}
+  };
+  if (ME) ME = user(ME.id) || ME;
+  if (V.view === 'demanda' && V.id) await loadHist(V.id);
+}
+async function loadHist(mid){
+  const { data, error } = await sb.from('historico').select('*').eq('manutencao_id', mid).order('em');
+  if (error) return;
+  histCache[mid] = data.map(h => ({ em: h.em, por: h.por, txt: h.txt }));
+  const m = manut(mid); if (m) m.historico = histCache[mid];
+}
+const apiRemote = {
+  async criarDemanda(d){
+    const paths = [];
+    for (const f of d.fotos) paths.push(await uploadFoto(f, 'demandas'));
+    const r = await rpc('criar_demanda', { p_placa: d.placa, p_descricao: d.descricao, p_tipo: d.tipo, p_prioridade: d.prioridade, p_fotos: paths,
+      p_emerg: d.emergencial ? { fornecedor_id: d.emergencial.fornecedorId, valor: d.emergencial.valor, justificativa: d.emergencial.justificativa, pagamento: d.emergencial.pagamento } : null });
+    await reload();
+    return { m: manut(r.manutencao_id), oc: r.ordem_id ? ordem(r.ordem_id) : null };
+  },
+  definirPrioridade: (m, p) => run('definir_prioridade', { p_manut: m.id, p_prioridade: p }),
+  atender: m => run('atender', { p_manut: m.id }),
+  comentar: (m, t) => run('comentar', { p_manut: m.id, p_txt: t }),
+  async novaCompra(m, descricao, tipo){ const id = await rpc('nova_compra', { p_manut: m.id, p_descricao: descricao, p_tipo: tipo }); await reload(); return manut(m.id).compras.find(c => c.id === id); },
+  async addCotacao(m, c, q){
+    const anexo = q.anexo ? await uploadFoto(q.anexo, 'cotacoes') : null;
+    await run('add_cotacao', { p_compra: c.id, p_fornecedor: q.fornecedorId, p_valor: q.valor, p_prazo: q.prazo, p_pagamento: q.pagamento, p_obs: q.obs, p_anexo: anexo });
+  },
+  removerCotacao: (m, c, qid) => run('remover_cotacao', { p_cotacao: qid }),
+  escolher: (m, c, qid) => run('escolher_cotacao', { p_compra: c.id, p_cotacao: qid }),
+  enviarAprovacao: (m, c, j, d) => run('enviar_aprovacao', { p_compra: c.id, p_justificativa: j, p_dispensa: d }),
+  async aprovar(m, c, j, d){ const id = await rpc('aprovar', { p_compra: c.id, p_justificativa: j, p_dispensa: d }); await reload(); return ordem(id); },
+  reprovar: (m, c, t) => run('reprovar', { p_compra: c.id, p_motivo: t }),
+  cancelarCompra: (m, c) => run('cancelar_compra', { p_compra: c.id }),
+  async registrarNF(o, nf){
+    const foto = nf.foto ? await uploadFoto(nf.foto, 'nf') : null;
+    const st = await rpc('registrar_nf', { p_ordem: o.id, p_numero: nf.numero, p_valor: nf.valor, p_foto: foto });
+    await reload(); return st;
+  },
+  aceitarDivergencia: o => run('aceitar_divergencia', { p_ordem: o.id }),
+  revisarEmergencial: o => run('revisar_emergencial', { p_ordem: o.id }),
+  encerrar: m => run('encerrar', { p_manut: m.id }),
+  reabrir: m => run('reabrir', { p_manut: m.id }),
+  cancelarManut: (m, motivo) => run('cancelar_manut', { p_manut: m.id, p_motivo: motivo }),
+  async salvarFornecedor(f){ const id = await rpc('salvar_fornecedor', { p: f }); await reload(); return forn(id); },
+  salvarVeiculo: v => run('salvar_veiculo', { p: { ...v, placa: normPlaca(v.placa) } }),
+  salvarUsuario: u => run('salvar_usuario', { p: { id: u.id, nome: u.nome, perfil: u.perfil, placa: u.placa, ativo: u.ativo !== false } }),
+  salvarConfig: c => run('salvar_config', { p: { alcada_motorista: c.alcada.motorista, alcada_mecanico: c.alcada.mecanico, alcada_analista: c.alcada.analista,
+    faixa1: c.faixas[0].ate, faixa2: c.faixas[1].ate, teto_emergencial: c.tetoEmergencial, prazo_regularizacao_h: c.prazoRegularizacaoH, tolerancia_nf: c.toleranciaNF } })
+};
+const api = REMOTE ? apiRemote : apiLocal;
+
+let rlT = null;
+function agendarRecarga(){
+  clearTimeout(rlT);
+  rlT = setTimeout(async () => {
+    try { await reload(); } catch (e) { return; }
+    const ocupado = document.querySelector('#modal-root .modal') || V.view === 'nova' || ['INPUT', 'TEXTAREA', 'SELECT'].includes(document.activeElement?.tagName);
+    if (!ocupado) render();
+  }, 600);
+}
+function assinarTempoReal(){
+  sb.channel('barreto-db').on('postgres_changes', { event: '*', schema: 'public' }, agendarRecarga).subscribe();
+}
+async function entrarRemoto(u){
+  ME = { id: u.id, nome: u.email, perfil: 'motorista' };
+  try { await reload(); }
+  catch (e) { ME = null; await sb.auth.signOut(); loginErro = 'Seu usuário ainda não tem acesso ao app. Peça ao gestor para liberar.'; render(); return; }
+  ME = user(u.id);
+  if (!ME || ME.ativo === false) { ME = null; await sb.auth.signOut(); loginErro = 'Seu acesso está desativado. Fale com o gestor.'; render(); return; }
+  assinarTempoReal();
+  V.view = 'fila'; render();
+}
+let loginErro = '';
+
+function gerarOC(m, c, emergencial){
+  const q = escolhida(c);
+  const o = { id: uid(), num: proxNum('OC'), manutencaoId: m.id, compraId: c.id, placa: m.placa, fornecedorId: q.fornecedorId, valor: q.valor,
+    tipo: c.tipo, emergencial, aprovadoPor: ME.id, aprovadoEm: now(),
+    regularizarAte: emergencial ? new Date(Date.now() + S.config.prazoRegularizacaoH * 3600e3).toISOString() : null,
+    revisadaPor: null, nf: null, status: 'aberta' };
+  S.ordens.unshift(o); c.status = 'aprovada'; c.ocId = o.id;
+  return o;
+}
+
+/* ---------- estado da interface ---------- */
+let ME = null;
+const V = { view:'fila', id:null, tab: lsGet(LS_TAB) || 'urgente', placa:'', busca:'', so:'' , ocBusca:'', cad:'fornecedores' };
+let draft = null;
+
+function go(view, id = null){
+  V.view = view; V.id = id; render(); window.scrollTo(0, 0);
+  if (REMOTE && view === 'demanda' && id && !histCache[id]) loadHist(id).then(() => { if (V.view === 'demanda' && V.id === id) render(); });
+}
+
+/* ---------- toast e modal ---------- */
+let toastT;
+function toast(msg, bad = false){
+  const r = document.getElementById('toast-root');
+  r.innerHTML = `<div class="toast${bad ? ' bad' : ''}" role="status">${esc(msg)}</div>`;
+  clearTimeout(toastT); toastT = setTimeout(() => r.innerHTML = '', 3600);
+}
+let modalOnSubmit = null;
+function openModal(html, onSubmit){
+  modalOnSubmit = onSubmit || null;
+  document.getElementById('modal-root').innerHTML = `<div class="modal" data-act="modal-bg"><div class="sheet" role="dialog" aria-modal="true">${html}</div></div>`;
+  const f = document.querySelector('#modal-root input:not([type=hidden]):not([type=file]), #modal-root textarea, #modal-root select');
+  if (f) setTimeout(() => f.focus(), 30);
+}
+function closeModal(){ document.getElementById('modal-root').innerHTML = ''; modalOnSubmit = null; }
+
+/* ---------- fotos ---------- */
+function compressImage(file, max = 1280, q = 0.68){
+  return new Promise((res, rej) => {
+    const rd = new FileReader();
+    rd.onerror = rej;
+    rd.onload = () => {
+      const img = new Image();
+      img.onerror = rej;
+      img.onload = () => {
+        const k = Math.min(1, max / Math.max(img.width, img.height));
+        const cv = document.createElement('canvas');
+        cv.width = Math.round(img.width * k); cv.height = Math.round(img.height * k);
+        cv.getContext('2d').drawImage(img, 0, 0, cv.width, cv.height);
+        res(cv.toDataURL('image/jpeg', q));
+      };
+      img.src = rd.result;
+    };
+    rd.readAsDataURL(file);
+  });
+}
+const photosHtml = (fotos, removable = false, key = '') => fotos.map((f, i) =>
+  `<div class="photo"><button type="button" class="photo" style="width:100%;height:100%" data-act="ver-foto" data-src="${key}:${i}" aria-label="Ver foto ${i + 1}"><img src="${f}" alt=""></button>${removable ? `<button type="button" class="x" data-act="rm-foto" data-i="${i}" aria-label="Remover foto ${i + 1}">×</button>` : ''}</div>`).join('');
+
+/* =========================================================
+   TELAS
+   ========================================================= */
+function render(){
+  const app = document.getElementById('app');
+  document.body.dataset.view = ME ? V.view : 'login';
+  document.body.dataset.sub = ME && ['demanda', 'nova', 'oc'].includes(V.view) ? '1' : '';
+  if (!ME) { app.innerHTML = viewLogin(); return; }
+  const views = { fila:viewFila, nova:viewNova, demanda:viewDemanda, aprovar:viewAprovar, ordens:viewOrdens, oc:viewOC, mais:viewMais, cadastros:viewCadastros, config:viewConfig };
+  const body = (views[V.view] || viewFila)();
+  const nav = V.view === 'demanda' || V.view === 'nova' ? 'fila' : V.view === 'oc' ? 'ordens' : (V.view === 'cadastros' || V.view === 'config') ? (window.innerWidth <= 820 ? 'mais' : V.view) : V.view;
+  const na = contAprovar(ME);
+  const ni = (v, icon, label, badge) => `<button class="nav-i" data-go="${v}" ${nav === v ? 'aria-current="page"' : ''}>${ic(icon, 20)}<span>${label}</span>${badge ? `<span class="badge">${badge}</span>` : ''}</button>`;
+  app.innerHTML = `
+  <div class="shell">
+    <aside class="side" aria-label="Menu">
+      <div class="logo"><img src="logo.png" alt="Barreto Transportes"></div>
+      ${ni('fila', 'fila', 'Fila de manutenções')}
+      ${ME.perfil !== 'motorista' ? ni('aprovar', 'check', 'Aprovações', na || '') : ''}
+      ${ni('ordens', 'doc', 'Ordens de compra')}
+      ${pode.cadastros(ME) ? `<div class="sep"></div>${ni('cadastros', 'store', 'Cadastros')}` : ''}
+      ${pode.config(ME) ? ni('config', 'gear', 'Regras e alçadas') : ''}
+      <div class="who">
+        <div class="row" style="gap:10px;flex-wrap:nowrap"><span class="av">${esc(initials(ME.nome))}</span><div style="min-width:0"><div style="font-weight:700">${esc(ME.nome)}</div><div class="small muted">${PERFIS[ME.perfil]}</div></div></div>
+        ${REMOTE ? `<button class="btn sm" data-act="trocar-senha">Trocar senha</button>` : ''}<button class="btn sm" data-act="sair">${ic('out', 18)} ${REMOTE ? 'Sair' : 'Trocar usuário'}</button>
+      </div>
+    </aside>
+    <div class="main">
+      <header class="mtop">
+        <div class="logo"><img src="logo.png" alt="Barreto Transportes"></div>
+        <button class="btn sm" data-go="mais" aria-label="Usuário ${esc(ME.nome)}" style="border:0;padding:0 4px"><span class="small muted" style="font-weight:600">${esc(ME.nome.split(' ')[0])} · ${PERFIS[ME.perfil]}</span><span class="av" style="width:32px;height:32px;font-size:13px">${esc(initials(ME.nome))}</span></button>
+      </header>
+      ${body}
+    </div>
+  </div>
+  ${V.view === 'fila' ? `<button class="fab" data-go="nova">${ic('plus', 22, 2.6)} Nova demanda</button>` : ''}
+  <nav class="bnav" aria-label="Navegação">
+    <button data-go="fila" ${nav === 'fila' ? 'aria-current="page"' : ''}>${ic('fila', 24)}Fila</button>
+    ${ME.perfil !== 'motorista' ? `<button data-go="aprovar" ${nav === 'aprovar' ? 'aria-current="page"' : ''}>${ic('check', 24)}Aprovar${na ? `<span class="badge">${na}</span>` : ''}</button>` : `<button data-go="nova">${ic('plus', 24)}Nova</button>`}
+    <button data-go="ordens" ${nav === 'ordens' ? 'aria-current="page"' : ''}>${ic('doc', 24)}Ordens</button>
+    <button data-go="mais" ${nav === 'mais' ? 'aria-current="page"' : ''}>${ic('more', 24)}Mais</button>
+  </nav>`;
+}
+
+/* ---------- login ---------- */
+function viewLogin(){
+  if (REMOTE) return `<div class="login"><div class="box">
+    <div class="logo"><img src="logo.png" alt="Barreto Transportes"></div>
+    <div style="text-align:center"><h1 style="font-family:var(--f-display);font-size:30px;color:var(--heading)">Manutenção</h1>
+      <p class="muted" style="margin:4px 0 0">Demandas, cotações e ordens de compra da frota</p></div>
+    <form id="form-login" class="card pad stack" style="gap:14px">
+      <div class="field"><label for="lg-email">E-mail</label><input class="input" id="lg-email" type="email" autocomplete="username" inputmode="email"></div>
+      <div class="field"><label for="lg-senha">Senha</label><input class="input" id="lg-senha" type="password" autocomplete="current-password"></div>
+      ${loginErro ? `<div class="notice bad"><span>${esc(loginErro)}</span></div>` : ''}
+      <button class="btn primary block" type="submit">Entrar</button>
+      <button class="btn sm" type="button" data-act="esqueci" style="align-self:center;border:0">Esqueci minha senha</button>
+    </form>
+  </div></div>`;
+  return `<div class="login"><div class="box">
+    <div class="logo"><img src="logo.png" alt="Barreto Transportes"></div>
+    <div style="text-align:center"><h1 style="font-family:var(--f-display);font-size:30px;color:var(--heading)">Manutenção</h1>
+      <p class="muted" style="margin:4px 0 0">Demandas, cotações e ordens de compra da frota</p></div>
+    <div class="banner">${ic('info', 18)}<span>Modo de teste neste aparelho. Na versão com Supabase, cada pessoa entra com e-mail e senha.</span></div>
+    <div class="stack">
+      <span class="small muted" style="font-weight:700">Entrar como</span>
+      ${S.users.map(u => `<button class="ubtn" data-act="entrar" data-id="${u.id}"><span class="av">${esc(initials(u.nome))}</span><span style="min-width:0"><span style="display:block;font-weight:700">${esc(u.nome)}</span><span class="small muted">${PERFIS[u.perfil]}${u.placa ? ' · ' + esc(u.placa) : ''}</span></span></button>`).join('')}
+    </div>
+  </div></div>`;
+}
+
+/* ---------- fila ---------- */
+function totais(){
+  const d = new Date(), ini = new Date(d.getFullYear(), d.getMonth(), 1);
+  const mes = S.ordens.filter(o => o.status !== 'cancelada' && new Date(o.aprovadoEm) >= ini);
+  const gasto = mes.reduce((a, o) => a + (o.nf ? o.nf.valor : o.valor), 0);
+  const porPlaca = {};
+  mes.forEach(o => porPlaca[o.placa] = (porPlaca[o.placa] || 0) + (o.nf ? o.nf.valor : o.valor));
+  const placas = Object.entries(porPlaca).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const tempos = [];
+  S.manutencoes.forEach(m => m.compras.forEach(c => { const o = ordem(c.ocId); if (o && !o.emergencial && c.solicitadaEm && new Date(o.aprovadoEm) >= ini) tempos.push((new Date(o.aprovadoEm) - new Date(c.solicitadaEm)) / 3600e3); }));
+  const tm = tempos.length ? tempos.reduce((a, b) => a + b, 0) / tempos.length : null;
+  let aguard = 0; S.manutencoes.forEach(m => m.compras.forEach(c => { if (c.status === 'aprovacao') aguard++; }));
+  return { gasto, nOC: mes.length, nPlacas: Object.keys(porPlaca).length, placas,
+    aguard, emerg: S.ordens.filter(o => o.emergencial && !o.nf && o.status !== 'cancelada').length,
+    pctEmerg: mes.length ? Math.round(100 * mes.filter(o => o.emergencial).length / mes.length) : 0,
+    tm, mesNome: d.toLocaleDateString('pt-BR', { month:'long' }) };
+}
+const fmtH = h => h == null ? '—' : h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : `${h.toFixed(1).replace('.', ',')} h`;
+
+function viewFila(){
+  const lista = visiveis(ME);
+  const ativas = lista.filter(m => !['encerrada', 'cancelada'].includes(statusManut(m)));
+  const placas = [...new Set(lista.map(m => m.placa))].sort();
+  const filtra = arr => arr.filter(m => (!V.placa || m.placa === V.placa) &&
+    (!V.so || V.so === 'encerradas' || (V.so === 'minhas' ? (m.abertoPor === ME.id || m.atendidoPor === ME.id) : V.so === 'triagem' ? !m.prioridadeConfirmada : statusManut(m) === V.so)) &&
+    (!V.busca || (m.num + ' ' + m.placa + ' ' + m.descricao).toLowerCase().includes(V.busca.toLowerCase())));
+  const urg = filtra(ativas.filter(m => m.prioridade === 'urgente'));
+  const prog = filtra(ativas.filter(m => m.prioridade === 'programada'));
+  const enc = filtra(lista.filter(m => ['encerrada', 'cancelada'].includes(statusManut(m))));
+  const t = totais();
+  const nTri = ativas.filter(m => !m.prioridadeConfirmada).length;
+
+  const row = m => { const s = statusManut(m); const nv = m.compras.filter(c => c.status !== 'cancelada').reduce((a, c) => a + (valorCompra(c) || 0), 0);
+    return `<button class="qrow" data-go="demanda" data-id="${m.id}">
+      <span class="muted num">${esc(m.num)}</span><span><span class="plate">${esc(m.placa)}</span></span>
+      <span style="font-weight:600;min-width:0">${esc(m.descricao)} ${!m.prioridadeConfirmada ? '<span class="tag-sug">sugerida</span>' : ''}</span>
+      <span class="muted">${esc(nomeU(m.abertoPor))}</span><span>${pillSt(s)}</span>
+      <span class="num" style="font-weight:700;text-align:right">${nv ? fmtR(nv) : '—'}</span><span class="muted" style="text-align:right">${rel(m.abertoEm)}</span></button>`; };
+  const card = m => { const s = statusManut(m);
+    return `<button class="qcard" data-go="demanda" data-id="${m.id}">
+      <span class="row" style="justify-content:space-between"><span class="plate">${esc(m.placa)}</span>${pillSt(s)}</span>
+      <span class="t">${esc(m.descricao)}</span>
+      <span class="meta"><span class="num">${esc(m.num)}</span><span>${esc(nomeU(m.abertoPor))}</span>${m.fotos.length ? `<span class="row" style="gap:4px">${ic('cam', 15)}${m.fotos.length}</span>` : ''}${!m.prioridadeConfirmada ? '<span class="tag-sug">prioridade sugerida</span>' : ''}<span style="margin-left:auto">${rel(m.abertoEm)}</span></span></button>`; };
+  const section = (titulo, cor, arr) => `
+    <section class="card qdesk" style="overflow:hidden">
+      <div class="qhead"><span class="dot" style="background:${cor}"></span><h2>${titulo}</h2><span class="muted">${arr.length}</span></div>
+      ${arr.length ? `<div class="qscroll">${arr.map(row).join('')}</div>` : `<div class="empty">Nada por aqui.</div>`}
+    </section>`;
+  const mob = V.so === 'encerradas' ? enc : V.tab === 'urgente' ? urg : prog;
+  const cnt = f => ativas.filter(f).length;
+
+  return `<div class="content">
+    ${S.exemplo && pode.config(ME) ? `<div class="banner ex">${ic('info', 18)}<span>Dados de exemplo para testar o fluxo.</span><button class="btn sm" data-act="limpar-exemplo" style="margin-left:auto">Começar do zero</button></div>` : ''}
+    <div class="page-h"><h1>Fila de manutenções</h1><span class="sub hide-m">${new Date().toLocaleDateString('pt-BR', { weekday:'long', day:'numeric', month:'long' })}</span>
+      <div class="right hide-m"><button class="btn primary" data-go="nova">${ic('plus', 18, 2.6)} Nova demanda</button></div></div>
+    <div class="with-panel"><div class="col">
+      <div class="qlist-m" style="gap:10px">
+        <div class="seg">
+          <button data-act="tab" data-v="urgente" aria-pressed="${V.so !== 'encerradas' && V.tab === 'urgente'}">Urgentes · ${urg.length}</button>
+          <button data-act="tab" data-v="programada" aria-pressed="${V.so !== 'encerradas' && V.tab === 'programada'}">Programadas · ${prog.length}</button>
+        </div>
+      </div>
+      <div class="row hide-m" style="gap:8px">
+        <input class="input" id="busca-fila" placeholder="Buscar nº, placa ou descrição" value="${esc(V.busca)}" style="flex:1 1 220px;min-height:40px;font-size:15px" aria-label="Buscar">
+        <select class="input" id="placa-fila" style="flex:0 1 170px;min-height:40px;font-size:15px" aria-label="Placa">
+          <option value="">Todas as placas</option>${placas.map(p => `<option ${V.placa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
+        </select>
+      </div>
+      <div class="chips">
+        <select class="chip m-only" id="placa-fila-m" aria-label="Placa"><option value="">Todas as placas</option>${placas.map(p => `<option ${V.placa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>
+        ${[['', 'Todas'], ['minhas', 'Minhas'], ['aprovacao', 'Aguardando aprovação', cnt(m => statusManut(m) === 'aprovacao')], ['cotacao', 'Em cotação', cnt(m => statusManut(m) === 'cotacao')], ['emergencial', 'Emergenciais', cnt(m => statusManut(m) === 'emergencial')], ...(pode.prioridade(ME) && nTri ? [['triagem', 'Prioridade a confirmar', nTri]] : []), ['encerradas', 'Encerradas']]
+          .map(([v, l, n]) => `<button class="chip" data-act="so" data-v="${v}" aria-pressed="${V.so === v}">${l}${n ? ' · ' + n : ''}</button>`).join('')}
+      </div>
+      ${V.so === 'encerradas' ? section('Encerradas', 'var(--line-2)', enc) : section('Urgentes', 'var(--orange)', urg) + section('Programadas', 'var(--primary)', prog)}
+      <div class="qlist-m">${mob.length ? mob.map(card).join('') : `<div class="card empty">Nenhuma demanda ${V.so === 'encerradas' ? 'encerrada' : V.tab === 'urgente' ? 'urgente' : 'programada'}.</div>`}</div>
+    </div>
+    <aside class="panel" aria-label="Resumo do mês">
+      <span class="small muted" style="font-weight:700;letter-spacing:1.2px;text-transform:uppercase">${t.mesNome}</span>
+      <div class="stat hero"><span class="l">Gasto aprovado no mês</span><span class="v">${fmtR(t.gasto)}</span><span class="l">${t.nOC} OC · ${t.nPlacas} placa(s)</span></div>
+      <div class="grid2">
+        <div class="stat"><span class="l">Aguardando aprovação</span><span class="v" style="color:var(--warn)">${t.aguard}</span></div>
+        <div class="stat"><span class="l">Emergenciais a regularizar</span><span class="v" style="color:var(--bad)">${t.emerg}</span></div>
+        <div class="stat"><span class="l">Tempo médio de aprovação</span><span class="v">${fmtH(t.tm)}</span></div>
+        <div class="stat"><span class="l">Compras emergenciais</span><span class="v">${t.pctEmerg}%</span></div>
+      </div>
+      <div class="card pad stack">
+        <span style="font-weight:800">Gasto por placa</span>
+        ${t.placas.length ? t.placas.map(([p, v]) => `<div class="stack" style="gap:4px"><div class="row small" style="justify-content:space-between"><span style="font-weight:700">${esc(p)}</span><span class="num">${fmtR(v)}</span></div><span class="bar" style="width:${Math.max(4, 100 * v / t.placas[0][1])}%"></span></div>`).join('') : '<span class="small muted">Sem ordens neste mês.</span>'}
+      </div>
+    </aside></div>
+  </div>`;
+}
+
+/* ---------- nova demanda ---------- */
+function novoDraft(){
+  return { placa: ME.placa || '', descricao:'', tipo:'peca', prioridade:'urgente', fotos:[], emergencial:false, fornecedorId:'', valor:'', justificativa:'', pagamento:'' };
+}
+function viewNova(){
+  if (!draft) draft = novoDraft();
+  const d = draft;
+  const placas = S.veiculos.map(v => v.placa);
+  const teto = S.config.tetoEmergencial;
+  return `<div class="content" style="max-width:720px">
+    <div class="subbar"><button class="hbtn" data-go="fila" aria-label="Voltar">${ic('back', 22, 2.2)}</button><h1>Nova demanda</h1><span class="sb-hint">leva uns 30 segundos</span></div>
+    <form class="card pad stack form-card" id="form-nova" style="gap:18px">
+      <div class="field"><span class="lbl">Placa</span>
+        <div class="chips">${placas.map(p => `<button type="button" class="chip plate-chip" data-act="d-placa" data-v="${esc(p)}" aria-pressed="${d.placa === p}">${esc(p)}</button>`).join('')}</div>
+        ${!placas.length ? '<span class="hint">Nenhum veículo cadastrado. Peça ao analista para cadastrar em Cadastros.</span>' : ''}
+      </div>
+      <div class="field"><label for="d-desc">O que está acontecendo?</label>
+        <textarea class="input" id="d-desc" data-draft="descricao" rows="3" placeholder="Ex.: barulho na roda dianteira, vazamento de óleo, pneu furado">${esc(d.descricao)}</textarea></div>
+      <div class="field"><span class="lbl">Fotos</span>
+        <div class="photos">${photosHtml(d.fotos, true, 'draft')}
+          <label class="addphoto">${ic('cam', 26)}<span>Adicionar</span><input type="file" accept="image/*" capture="environment" multiple id="d-fotos"></label></div>
+        <span class="hint">As fotos são reduzidas automaticamente.</span></div>
+      <div class="field"><span class="lbl">Precisa de</span>
+        <div class="seg blue">${[['peca', 'Peça'], ['servico', 'Serviço'], ['ambos', 'Peça + serviço']].map(([v, l]) => `<button type="button" data-act="d-tipo" data-v="${v}" aria-pressed="${d.tipo === v}">${l}</button>`).join('')}</div></div>
+      ${!d.emergencial ? `<div class="field"><span class="lbl">Prioridade</span>
+        <div class="seg">${[['urgente', 'Urgente'], ['programada', 'Programada']].map(([v, l]) => `<button type="button" data-act="d-pri" data-v="${v}" aria-pressed="${d.prioridade === v}">${l}</button>`).join('')}</div>
+        <span class="hint">${ME.perfil === 'gestor' ? 'Como gestor, a prioridade já fica confirmada.' : 'Você sugere; o gestor confirma ou muda na fila.'}</span></div>` : ''}
+      <label class="switch ${d.emergencial ? 'on' : ''}"><input type="checkbox" id="d-emerg" ${d.emergencial ? 'checked' : ''}>
+        <span class="stack" style="gap:2px"><span style="font-weight:800;color:var(--bad)">Compra emergencial</span>
+        <span class="small muted">Parado e precisa comprar agora? O número da OC sai na hora (até ${fmtR(teto)}). NF e foto em até ${S.config.prazoRegularizacaoH} h.</span></span></label>
+      ${d.emergencial ? `<div class="emerg">
+        <div class="field"><label for="d-forn">Onde vai comprar</label>
+          <select class="input" id="d-forn" data-draft="fornecedorId"><option value="">Escolha o fornecedor</option>${S.fornecedores.map(f => `<option value="${f.id}" ${d.fornecedorId === f.id ? 'selected' : ''}>${esc(f.nome)}${f.cidade ? ' · ' + esc(f.cidade) : ''}</option>`).join('')}</select>
+          <button type="button" class="btn sm" data-act="forn-rapido" data-ret="draft" style="align-self:flex-start">${ic('plus', 16)} Fornecedor não está na lista</button></div>
+        <div class="fgrid">
+          <div class="field"><label for="d-valor">Valor (R$)</label><input class="input num" id="d-valor" data-draft="valor" inputmode="decimal" placeholder="0,00" value="${esc(d.valor)}"></div>
+          <div class="field"><label for="d-pag">Pagamento</label><input class="input" id="d-pag" data-draft="pagamento" placeholder="Ex.: cartão, faturado" value="${esc(d.pagamento)}"></div>
+        </div>
+        <div class="field"><label for="d-just">Por que é emergencial?</label><input class="input" id="d-just" data-draft="justificativa" placeholder="Ex.: parado na BR-373, carga com prazo" value="${esc(d.justificativa)}"></div>
+      </div>` : ''}
+      <div class="submitbar"><button class="btn primary block" type="submit">${d.emergencial ? 'Gerar OC emergencial' : 'Enviar para a fila'}</button></div>
+    </form>
+  </div>`;
+}
+async function submitNova(){
+  const d = draft;
+  if (!d.placa) return toast('Escolha a placa.', true);
+  if (!d.descricao.trim()) return toast('Descreva o que está acontecendo.', true);
+  let emerg = null;
+  if (d.emergencial) {
+    const valor = parseR(d.valor);
+    if (!d.fornecedorId) return toast('Escolha o fornecedor da compra emergencial.', true);
+    if (!valor) return toast('Informe o valor da compra emergencial.', true);
+    if (!d.justificativa.trim()) return toast('Diga por que a compra é emergencial.', true);
+    emerg = { fornecedorId: d.fornecedorId, valor, justificativa: d.justificativa.trim(), pagamento: d.pagamento };
+  }
+  const { m, oc } = await api.criarDemanda({ placa: d.placa, descricao: d.descricao.trim(), tipo: d.tipo, prioridade: d.prioridade, fotos: d.fotos, emergencial: emerg });
+  draft = null;
+  if (oc) { toast(`${oc.num} gerada. Informe ao fornecedor.`); go('oc', oc.id); }
+  else if (emerg) { toast('Valor acima do teto emergencial. Enviado ao gestor como urgente.'); go('demanda', m.id); }
+  else { toast(`${m.num} enviada para a fila.`); go('fila'); }
+}
+
+/* ---------- detalhe da demanda ---------- */
+function viewDemanda(){
+  const m = manut(V.id);
+  if (!m) return `<div class="content"><div class="card empty">Demanda não encontrada. <button class="btn sm" data-go="fila">Voltar à fila</button></div></div>`;
+  const s = statusManut(m), si = stepIndex(s);
+  const lbls = ['Aberta', 'Cotação', 'Aprovação', 'Execução', 'Encerrada'];
+  const steps = lbls.map((_, i) => `<span class="${i < si || si === 5 ? 'done' : i === si ? 'now' : ''}"></span>`).join('');
+  const stepl = lbls.map((l, i) => `<span class="${i === si && si < 5 ? 'now' : ''}">${l}</span>`).join('');
+  const ativa = !['encerrada', 'cancelada'].includes(s);
+  const compras = m.compras.filter(c => c.status !== 'cancelada');
+  const podeEncerrar = pode.encerrar(ME) && ativa && compras.length > 0 && compras.every(c => c.status === 'aprovada' && ordem(c.ocId)?.nf && ordem(c.ocId)?.status !== 'divergente');
+  const tipoTxt = { peca:'Peça', servico:'Serviço', ambos:'Peça + serviço' }[m.tipo];
+  let bar = '';
+  const comprasHtml = compras.map(c => {
+    barHtml = '';
+    let h = compraHtml(m, c);
+    if (!bar && barHtml) { bar = barHtml; h = h.replace('<section class="compra"', '<section class="compra" data-bar="1"'); }
+    return h;
+  }).join('');
+  if (!bar && compras.length === 0 && pode.cotar(ME) && ativa) bar = `<button class="btn primary" data-act="cotar-nova">Lançar cotação</button>`;
+  if (!bar && podeEncerrar) bar = `<button class="btn primary" data-act="encerrar">Encerrar manutenção</button>`;
+
+  return `<div class="content">
+    <section class="hero">
+      <div class="top">
+        <button class="hbtn" data-go="fila" aria-label="Voltar à fila">${ic('back', 22, 2.2)}</button>
+        <span class="plate inv">${esc(m.placa)}</span><span class="hnum num">${esc(m.num)}</span>
+        <span class="hpills">${pillPri(m)}${!m.prioridadeConfirmada ? '<span class="tag-sug inv">sugerida</span>' : ''}</span>
+      </div>
+      <h1>${esc(m.descricao)}</h1>
+      <div class="hfoot">
+        ${m.fotos.length ? `<div class="thumbs">${m.fotos.slice(0, 4).map((f, i) => `<button type="button" class="thumb" data-act="ver-foto" data-src="m:${m.id}:${i}" aria-label="Ver foto ${i + 1}"><img src="${f}" alt=""></button>`).join('')}${m.fotos.length > 4 ? `<span class="hmeta">+${m.fotos.length - 4}</span>` : ''}</div>` : ''}
+        <span class="hmeta">Aberta por ${esc(nomeU(m.abertoPor))} · ${rel(m.abertoEm)}</span>
+        <span class="hst">${pillSt(s)}</span>
+      </div>
+    </section>
+    ${s !== 'cancelada' ? `<div class="stack" style="gap:6px;max-width:560px"><div class="steps">${steps}</div><div class="steps-l">${stepl}</div></div>` : ''}
+    ${pode.prioridade(ME) && ativa ? `<div class="row">
+      ${!m.prioridadeConfirmada ? `<button class="btn sm primary" data-act="pri" data-v="${m.prioridade}">Confirmar como ${m.prioridade}</button>` : ''}
+      <button class="btn sm" data-act="pri" data-v="${m.prioridade === 'urgente' ? 'programada' : 'urgente'}">Mudar para ${m.prioridade === 'urgente' ? 'programada' : 'urgente'}</button></div>` : ''}
+    <div class="dgrid">
+      <div class="b">
+        ${compras.length ? `<div class="row" style="justify-content:space-between"><h2 style="font-size:18px;font-weight:800;color:var(--heading)">Compras e cotações</h2></div>${comprasHtml}` : `<div class="card pad stack">
+          <h2>Cotações</h2>
+          <p class="muted" style="margin:0">Nenhuma cotação lançada. ${pode.cotar(ME) ? 'Lance a primeira para começar.' : 'O mecânico ou o analista vai cotar.'}</p>
+          ${pode.cotar(ME) && ativa ? `<button class="btn primary hide-m" data-act="cotar-nova" style="align-self:flex-start">${ic('plus', 18)} Lançar cotação</button>` : ''}</div>`}
+        ${compras.length && pode.cotar(ME) && ativa ? `<button class="btn" data-act="nova-compra" style="align-self:flex-start">${ic('plus', 18)} Outra compra nesta manutenção</button>` : ''}
+        ${podeEncerrar ? `<div class="notice ok"><b>Tudo recebido.</b><span>Todas as OCs têm NF registrada.</span><button class="btn primary hide-m" data-act="encerrar" style="align-self:flex-start;margin-top:6px">Encerrar manutenção</button></div>` : ''}
+        ${s === 'encerrada' && pode.encerrar(ME) ? `<button class="btn" data-act="reabrir" style="align-self:flex-start">Reabrir manutenção</button>` : ''}
+      </div>
+      <div class="a">
+        <div class="card pad stack">
+          <h2>Demanda</h2>
+          <dl class="kv" style="margin:0">
+            <dt>Aberta por</dt><dd>${esc(nomeU(m.abertoPor))} · ${fmtDT(m.abertoEm)}</dd>
+            <dt>Atendimento</dt><dd>${m.atendidoPor ? esc(nomeU(m.atendidoPor)) : '<span class="muted">ninguém ainda</span>'}</dd>
+            <dt>Precisa de</dt><dd>${tipoTxt}</dd>
+            <dt>Fotos</dt><dd>${m.fotos.length || 'nenhuma'}</dd>
+          </dl>
+          <div class="row">
+            ${ativa && pode.cotar(ME) && m.atendidoPor !== ME.id ? `<button class="btn sm" data-act="atender">Assumir atendimento</button>` : ''}
+            <button class="btn sm" data-act="comentar">Comentar</button>
+            ${ativa && pode.cancelar(ME) ? `<button class="btn sm danger" data-act="cancelar-manut">Cancelar demanda</button>` : ''}
+          </div>
+        </div>
+        <div class="card pad stack">
+          <h2>Histórico</h2>
+          <div class="hist">${m.historico.slice().reverse().map(h => `<div><span class="muted num">${fmtDT(h.em)}</span><span><b>${esc(nomeU(h.por))}</b> · ${esc(h.txt)}</span></div>`).join('')}</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  ${bar ? `<div class="actbar">${bar}</div>` : ''}`;
+}
+
+let barHtml = '';
+function compraHtml(m, c){
+  const q = escolhida(c), v = q?.valor ?? null, menor = menorCot(c);
+  const nec = v != null ? cotNecessarias(v) : 1;
+  const falta = Math.max(0, nec - c.cotacoes.length);
+  const editavel = (c.status === 'cotacao' || c.status === 'reprovada') && pode.cotar(ME);
+  const al = alcada(ME);
+  const o = ordem(c.ocId);
+  const stPill = { cotacao:'<span class="pill info">Em cotação</span>', reprovada:'<span class="pill bad">Reprovada · revisar</span>', aprovacao:'<span class="pill warn">Aguardando aprovação</span>', aprovada:`<span class="pill ok">${esc(o?.num || 'Aprovada')}</span>` }[c.status] || '';
+  const anexoLnk = x => x.anexo ? `<span class="lnk" data-act="ver-anexo" data-c="${c.id}" data-q="${x.id}">ver</span>` : '';
+  const cots = (c.cotacoes.length ? `<div class="cot-h"><span></span><span>Fornecedor</span><span>Valor</span><span>Prazo</span><span>Pagamento</span><span>Anexo</span></div>` : '') +
+    c.cotacoes.slice().sort((a, b) => a.valor - b.valor).map(x => {
+      const sel = x.id === c.escolhidaId;
+      const extra = [x.obs && esc(x.obs), editavel && `<span class="lnk bad" data-act="rm-cot" data-c="${c.id}" data-q="${x.id}">remover</span>`].filter(Boolean).join(' · ');
+      const mob = [x.prazo && esc(x.prazo), x.pagamento && 'pgto ' + esc(x.pagamento), x.anexo && `anexo: ${anexoLnk(x)}`].filter(Boolean).join(' · ');
+      return `<${editavel ? 'button type="button"' : 'div'} class="cot ${sel ? 'sel' : ''}" ${editavel ? `data-act="escolher" data-c="${c.id}" data-q="${x.id}" aria-pressed="${sel}"` : ''}>
+        <span class="radio"></span>
+        <span class="f">${esc(nomeF(x.fornecedorId))}${forn(x.fornecedorId)?.provisorio ? ' <span class="tag-sug">provisório</span>' : ''}${sel ? ' <span class="pill info" style="font-size:11px;padding:1px 7px">ESCOLHIDA</span>' : ''}</span>
+        <span class="v">${fmtR(x.valor)}${menor && x.id === menor.id && c.cotacoes.length > 1 ? ' <span class="pill ok" style="font-size:11px;padding:1px 6px">menor</span>' : ''}</span>
+        <span class="c-d">${esc(x.prazo) || '—'}</span><span class="c-d">${esc(x.pagamento) || '—'}</span><span class="c-d">${anexoLnk(x) || '—'}</span>
+        ${mob ? `<span class="m m-mob">${mob}</span>` : ''}
+        ${extra ? `<span class="m">${extra}</span>` : ''}
+      </${editavel ? 'button' : 'div'}>`;
+    }).join('');
+  const alcChips = `<span class="alc"><span class="pill neutral">Mecânico até ${fmtR(S.config.alcada.mecanico)}</span><span class="pill neutral">Analista até ${fmtR(S.config.alcada.analista)}</span><span class="pill warn">Gestor acima</span></span>`;
+
+  let rodape = '';
+  if (editavel && q) {
+    const regra = falta === 0 ? `<div class="notice ok"><span>Regra da faixa cumprida: ${nec} cotação(ões) para ${fmtR(v)}.</span></div>`
+      : `<div class="notice warn"><b>Faltam ${falta} cotação(ões).</b><span>Para ${fmtR(v)} a regra pede ${nec}. ${pode.dispensar(ME) ? 'Você pode dispensar com justificativa.' : 'Lance mais cotações ou peça ao analista para dispensar.'}</span></div>`;
+    const naoMenor = menor && q.id !== menor.id;
+    const podeAprovar = v <= al;
+    const ok = falta === 0 || pode.dispensar(ME);
+    const prim = ok ? `<button class="btn primary" data-act="${podeAprovar ? 'aprovar' : 'enviar'}" data-c="${c.id}" data-falta="${falta}" data-naomenor="${naoMenor ? 1 : 0}">${podeAprovar ? 'Aprovar e gerar OC' : 'Enviar para aprovação'}</button>` : '';
+    const cot = `<button class="btn" data-act="cotar" data-c="${c.id}">${ic('plus', 18)} Cotação</button>`;
+    barHtml = cot + prim;
+    rodape = `<div style="padding:12px 16px" class="stack">${regra}
+      ${c.motivoReprova ? `<div class="notice bad"><b>Reprovada:</b><span>${esc(c.motivoReprova)}</span></div>` : ''}
+      ${podeAprovar ? '' : `<div class="notice warn"><b>Alçada exigida: ${quemAprova(v)}</b><span>${fmtR(v)} passa da sua alçada (${al === 0 ? 'sem alçada' : fmtR(al)}).</span>${alcChips}</div>`}</div>
+      <div class="actions">
+        <span class="pri-act">${cot}</span>
+        ${pode.cancelar(ME) ? `<button class="btn danger" data-act="cancelar-compra" data-c="${c.id}">Cancelar compra</button>` : ''}
+        <span style="flex:1"></span>
+        <span class="pri-act">${prim}</span>
+      </div>`;
+  } else if (editavel && !q) {
+    const b = `<button class="btn primary" data-act="cotar" data-c="${c.id}">${ic('plus', 18)} Lançar cotação</button>`;
+    barHtml = b;
+    rodape = `<div class="actions pri-act">${b}</div>`;
+  } else if (c.status === 'aprovacao') {
+    const eu = ME.perfil !== 'motorista' && v <= al;
+    const btns = `<button class="btn danger" data-act="reprovar" data-c="${c.id}">Reprovar</button><button class="btn primary" data-act="aprovar-direto" data-c="${c.id}">Aprovar e gerar OC</button>`;
+    if (eu) barHtml = btns;
+    rodape = `<div style="padding:12px 16px" class="stack">
+      <div class="notice warn"><b>Alçada exigida: ${quemAprova(v)}</b><span>Enviada por ${esc(nomeU(c.solicitadaPor))} ${rel(c.solicitadaEm)}.${c.dispensa ? ' Dispensa de cotação: ' + esc(c.dispensa) + '.' : ''}${c.justificativa ? ' Justificativa: ' + esc(c.justificativa) + '.' : ''}</span>${alcChips}</div></div>
+      ${eu ? `<div class="actions pri-act"><span style="flex:1"></span>${btns}</div>` : ''}`;
+  } else if (c.status === 'aprovada' && o) {
+    const b = `<button class="btn ${o.nf ? '' : 'primary'}" data-go="oc" data-id="${o.id}">${o.nf ? 'Ver OC' : 'Abrir OC e registrar NF'}</button>`;
+    if (!o.nf) barHtml = b;
+    rodape = `<div class="actions"><span class="small muted" style="align-self:center">Aprovada por ${esc(nomeU(o.aprovadoPor))} · ${fmtDT(o.aprovadoEm)}</span><span style="flex:1"></span><span class="${o.nf ? '' : 'pri-act'}">${b}</span></div>`;
+  }
+  return `<section class="compra">
+    <div class="ch"><h3>${esc(c.descricao)}</h3>${stPill}<span style="margin-left:auto" class="num"><b>${v != null ? fmtR(v) : ''}</b></span></div>
+    ${c.cotacoes.length ? cots : '<div class="empty small">Sem cotações ainda.</div>'}
+    ${rodape}
+  </section>`;
+}
+function faixaDe(v){ for (const f of S.config.faixas) if (f.ate == null || v <= f.ate) return f.ate; return null; }
+function quemAprova(v){
+  const a = S.config.alcada;
+  if (v <= a.mecanico) return 'Mecânico ou acima';
+  if (v <= a.analista) return 'Analista ou gestor';
+  return 'Gestor';
+}
+
+/* ---------- aprovações ---------- */
+function viewAprovar(){
+  const pend = pendentesAprovacao(ME);
+  const emerg = pode.revisar(ME) ? emergPendentes() : [];
+  const div = pode.revisar(ME) ? divergentes() : [];
+  const item = ({ m, c }) => { const v = valorCompra(c), q = escolhida(c);
+    return `<div class="compra">
+      <div class="ch"><span class="plate">${esc(m.placa)}</span><span class="muted num">${esc(m.num)}</span>${pillPri(m)}<span style="margin-left:auto;font-size:18px" class="num"><b>${fmtR(v)}</b></span></div>
+      <div style="padding:12px 16px" class="stack">
+        <span style="font-weight:700;font-size:16px">${esc(c.descricao)}</span>
+        <span class="small muted">${esc(nomeF(q?.fornecedorId))} · ${c.cotacoes.length} cotação(ões)${c.cotacoes.length > 1 && menorCot(c).id !== c.escolhidaId ? ' · <b style="color:var(--warn)">não é a menor</b>' : ''} · enviada ${rel(c.solicitadaEm)} por ${esc(nomeU(c.solicitadaPor))}</span>
+        ${c.justificativa || c.dispensa ? `<span class="small">${c.dispensa ? 'Dispensa: ' + esc(c.dispensa) + '. ' : ''}${c.justificativa ? 'Justificativa: ' + esc(c.justificativa) : ''}</span>` : ''}
+      </div>
+      <div class="actions"><button class="btn sm" data-go="demanda" data-id="${m.id}">Ver detalhes</button><span style="flex:1"></span>
+        <button class="btn danger" data-act="reprovar" data-m="${m.id}" data-c="${c.id}">Reprovar</button>
+        <button class="btn primary" data-act="aprovar-direto" data-m="${m.id}" data-c="${c.id}">Aprovar</button></div></div>`; };
+  const em = o => { const venc = o.regularizarAte && new Date(o.regularizarAte) < new Date();
+    return `<div class="compra"><div class="ch"><b class="num">${esc(o.num)}</b><span class="plate">${esc(o.placa)}</span>
+      ${o.nf ? '<span class="pill ok">NF anexada</span>' : venc ? '<span class="pill bad">Prazo vencido</span>' : `<span class="pill warn">NF até ${fmtDT(o.regularizarAte)}</span>`}<span style="margin-left:auto" class="num"><b>${fmtR(o.nf?.valor ?? o.valor)}</b></span></div>
+      <div style="padding:12px 16px" class="small muted">${esc(nomeF(o.fornecedorId))} · comprada por ${esc(nomeU(o.aprovadoPor))} ${rel(o.aprovadoEm)} · ${esc(escolhidaJust(o))}</div>
+      <div class="actions"><button class="btn sm" data-go="oc" data-id="${o.id}">Abrir OC</button><span style="flex:1"></span>${o.nf ? `<button class="btn primary" data-act="revisar" data-o="${o.id}">Marcar como revisada</button>` : ''}</div></div>`; };
+  const dv = o => `<div class="compra"><div class="ch"><b class="num">${esc(o.num)}</b><span class="plate">${esc(o.placa)}</span><span class="pill bad">NF divergente</span></div>
+      <div style="padding:12px 16px" class="small">Aprovado ${fmtR(o.valor)} · NF ${fmtR(o.nf.valor)} (<b>+${(100 * (o.nf.valor / o.valor - 1)).toFixed(1).replace('.', ',')}%</b>) · ${esc(nomeF(o.fornecedorId))}</div>
+      <div class="actions"><button class="btn sm" data-go="oc" data-id="${o.id}">Abrir OC</button><span style="flex:1"></span><button class="btn primary" data-act="aceitar-div" data-o="${o.id}">Aceitar diferença</button></div></div>`;
+  return `<div class="content" style="max-width:860px">
+    <div class="page-h"><h1>Aprovações</h1><span class="sub">Sua alçada: ${alcada(ME) === Infinity ? 'sem limite' : fmtR(alcada(ME))}</span></div>
+    <h2 style="font-size:18px">Compras aguardando você · ${pend.length}</h2>
+    ${pend.length ? pend.map(item).join('') : '<div class="card empty">Nenhuma compra esperando sua aprovação.</div>'}
+    ${pode.revisar(ME) ? `<h2 style="font-size:18px;margin-top:8px">Emergenciais para revisar · ${emerg.length}</h2>
+      ${emerg.length ? emerg.map(em).join('') : '<div class="card empty">Nenhuma compra emergencial pendente.</div>'}
+      ${div.length ? `<h2 style="font-size:18px;margin-top:8px">NF acima da tolerância · ${div.length}</h2>${div.map(dv).join('')}` : ''}` : ''}
+  </div>`;
+}
+function escolhidaJust(o){ const m = manut(o.manutencaoId); const c = m?.compras.find(x => x.id === o.compraId); return c?.justificativa || ''; }
+
+/* ---------- ordens ---------- */
+const stOC = o => o.status === 'cancelada' ? '<span class="pill neutral">Cancelada</span>' : o.status === 'divergente' ? '<span class="pill bad">NF divergente</span>' : o.nf ? '<span class="pill ok">Recebida</span>' : o.emergencial ? '<span class="pill bad">Emergencial · sem NF</span>' : '<span class="pill info">Aguardando NF</span>';
+function visOrdens(){ if (ME.perfil !== 'motorista') return S.ordens; const ids = new Set(visiveis(ME).map(m => m.id)); return S.ordens.filter(o => ids.has(o.manutencaoId)); }
+function viewOrdens(){
+  const b = V.ocBusca.toLowerCase();
+  const lista = visOrdens().filter(o => !b || (o.num + ' ' + o.placa + ' ' + nomeF(o.fornecedorId) + ' ' + (o.nf?.numero || '')).toLowerCase().includes(b));
+  return `<div class="content" style="max-width:1000px">
+    <div class="page-h"><h1>Ordens de compra</h1><div class="right">${ME.perfil !== 'motorista' ? `<button class="btn sm" data-act="csv">Exportar planilha (CSV)</button>` : ''}</div></div>
+    <input class="input" id="busca-oc" placeholder="Buscar nº da OC, placa, fornecedor ou NF" value="${esc(V.ocBusca)}" aria-label="Buscar ordens">
+    <div class="card" style="overflow:hidden"><div class="olist">
+      ${lista.length ? lista.map(o => `<button class="orow" data-go="oc" data-id="${o.id}">
+        <b class="num">${esc(o.num)}</b><span class="hm"><span class="plate">${esc(o.placa)}</span></span><span class="hm" style="min-width:0">${esc(nomeF(o.fornecedorId))}</span>
+        <span class="num" style="font-weight:700;text-align:right">${fmtR(o.nf?.valor ?? o.valor)}</span><span style="text-align:right">${stOC(o)}</span>
+      </button>`).join('') : '<div class="empty">Nenhuma ordem encontrada.</div>'}
+    </div></div>
+  </div>`;
+}
+function waLink(o){
+  const f = forn(o.fornecedorId);
+  let tel = String(f?.telefone || '').replace(/\D/g, '');
+  if (tel && tel.length <= 11) tel = '55' + tel;
+  const m = manut(o.manutencaoId);
+  const msg = `Barreto Transportes — Ordem de compra ${o.num}\nPlaca: ${o.placa}\n${m ? 'Serviço/peça: ' + (m.compras.find(c => c.id === o.compraId)?.descricao || m.descricao) + '\n' : ''}Valor aprovado: ${fmtR(o.valor)}\nPor favor, informe o número ${o.num} na nota fiscal.`;
+  return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
+}
+function viewOC(){
+  const o = ordem(V.id);
+  if (!o) return `<div class="content"><div class="card empty">Ordem não encontrada.</div></div>`;
+  const m = manut(o.manutencaoId); const c = m?.compras.find(x => x.id === o.compraId);
+  const venc = o.emergencial && !o.nf && o.regularizarAte && new Date(o.regularizarAte) < new Date();
+  const f = forn(o.fornecedorId);
+  const hora = new Date(o.aprovadoEm).toDateString() === new Date().toDateString() ? new Date(o.aprovadoEm).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : fmtDT(o.aprovadoEm);
+  return `<div class="content" style="max-width:600px;gap:18px">
+    <div class="subbar light"><button class="hbtn" data-go="ordens" aria-label="Fechar">${ic('x', 22, 2.2)}</button><h1>Ordem de compra</h1><span class="sb-hint">${stOC(o)}</span></div>
+    <div class="ocok"><span class="okc">${o.emergencial ? ic('truck', 32, 2.2) : ic('check', 34, 2.6)}</span><span>${o.emergencial ? 'Compra emergencial' : 'Aprovada'} por ${esc(nomeU(o.aprovadoPor))} · ${hora}</span></div>
+    <div class="ocbig"><span class="l">INFORME ESTE NÚMERO AO FORNECEDOR</span><span class="n" id="oc-num">${esc(o.num)}</span><span class="small" style="color:var(--on-bar-2)">Peça para constar na nota fiscal ou no recibo</span></div>
+    ${o.emergencial && !o.nf ? `<div class="notice ${venc ? 'bad' : 'warn'}"><b>Compra emergencial${venc ? ' — prazo vencido' : ''}</b><span>Anexe a NF e a foto até ${fmtDT(o.regularizarAte)}.</span></div>` : ''}
+    <div class="card lines">
+      <div class="ln"><span>Fornecedor</span><b>${esc(nomeF(o.fornecedorId))}</b></div>
+      ${f?.telefone ? `<div class="ln"><span>Telefone</span><b>${esc(f.telefone)}</b></div>` : ''}
+      <div class="ln"><span>Placa</span><b>${esc(o.placa)}</b></div>
+      <div class="ln"><span>Manutenção</span><b>${m ? `<a href="#" data-go="demanda" data-id="${m.id}">${esc(m.num)}</a> · ${esc(c?.descricao || m.descricao)}` : '—'}</b></div>
+      <div class="ln"><span>Valor aprovado</span><b class="num" style="font-weight:800">${fmtR(o.valor)}</b></div>
+      ${o.nf ? `<div class="ln"><span>NF</span><b>${esc(o.nf.numero || 's/ nº')} · <span class="num">${fmtR(o.nf.valor)}</span></b></div><div class="ln"><span>Recebida por</span><b>${esc(nomeU(o.nf.por))} · ${fmtDT(o.nf.em)}</b></div>` : ''}
+    </div>
+    ${o.nf?.foto ? `<div class="photos">${photosHtml([o.nf.foto], false, 'nf:' + o.id)}</div>` : ''}
+    <div class="stack">
+      <a class="btn orange block" href="${waLink(o)}" target="_blank" rel="noopener">Enviar ao fornecedor pelo WhatsApp</a>
+      <button class="btn block" data-act="copiar" data-v="${esc(o.num)}" style="height:50px">${ic('copy', 18)} Copiar número</button>
+      ${!o.nf && o.status !== 'cancelada' ? `<button class="btn primary block" data-act="nf" data-o="${o.id}">Registrar recebimento (NF)</button>` : ''}
+      ${o.status === 'divergente' && pode.revisar(ME) ? `<button class="btn primary block" data-act="aceitar-div" data-o="${o.id}">Aceitar diferença da NF</button>` : ''}
+    </div>
+    ${!o.nf ? `<div class="row small muted" style="flex-wrap:nowrap;align-items:flex-start">${ic('info', 18)}<span>Próximo passo: quem receber a peça ou o serviço registra a NF com foto aqui. NF acima de ${String(S.config.toleranciaNF).replace('.', ',')}% do aprovado volta para o gestor.</span></div>` : ''}
+  </div>`;
+}
+
+/* ---------- mais / cadastros / regras ---------- */
+function viewMais(){
+  const t = totais();
+  const li = (v, icon, l) => `<button class="nav-i" data-go="${v}" style="height:52px">${ic(icon, 22)}<span>${l}</span></button>`;
+  return `<div class="content" style="max-width:640px">
+    <div class="card pad row" style="flex-wrap:nowrap"><span class="av">${esc(initials(ME.nome))}</span><div style="min-width:0"><div style="font-weight:800;font-size:17px">${esc(ME.nome)}</div><div class="small muted">${PERFIS[ME.perfil]}${ME.perfil !== 'gestor' ? ' · alçada ' + (alcada(ME) ? fmtR(alcada(ME)) : 'só emergencial') : ''}</div></div></div>
+    ${ME.perfil !== 'motorista' ? `<div class="grid2"><div class="stat hero" style="grid-column:1/3"><span class="l">Gasto aprovado em ${t.mesNome}</span><span class="v">${fmtR(t.gasto)}</span></div>
+      <div class="stat"><span class="l">Tempo médio de aprovação</span><span class="v">${fmtH(t.tm)}</span></div><div class="stat"><span class="l">Compras emergenciais</span><span class="v">${t.pctEmerg}%</span></div></div>` : ''}
+    <div class="card pad stack" style="gap:2px">
+      ${li('nova', 'plus', 'Nova demanda')}
+      ${pode.cadastros(ME) ? li('cadastros', 'store', 'Cadastros: fornecedores, veículos, usuários') : ''}
+      ${pode.config(ME) ? li('config', 'gear', 'Regras e alçadas') : ''}
+      ${REMOTE ? `<button class="nav-i" data-act="trocar-senha" style="height:52px">${ic('gear', 22)}<span>Trocar senha</span></button>` : ''}
+      <button class="nav-i" data-act="sair" style="height:52px">${ic('out', 22)}<span>${REMOTE ? 'Sair' : 'Trocar usuário'}</span></button>
+    </div>
+  </div>`;
+}
+function viewCadastros(){
+  if (!pode.cadastros(ME)) return `<div class="content"><div class="card empty">Sem acesso.</div></div>`;
+  const tabs = [['fornecedores', 'Fornecedores'], ['veiculos', 'Veículos'], ...(pode.config(ME) ? [['usuarios', 'Usuários']] : [])];
+  let body = '';
+  if (V.cad === 'fornecedores') body = `<div class="row"><button class="btn primary" data-act="forn-edit">${ic('plus', 18)} Fornecedor</button></div>
+    <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Nome</th><th>Categoria</th><th>Cidade</th><th>Telefone</th><th>CNPJ</th><th></th></tr></thead><tbody>
+    ${S.fornecedores.map(f => `<tr><td><b>${esc(f.nome)}</b> ${f.provisorio ? '<span class="tag-sug">completar cadastro</span>' : ''}</td><td>${esc(f.categoria)}</td><td>${esc(f.cidade)}</td><td>${esc(f.telefone)}</td><td>${esc(f.cnpj)}</td><td><button class="btn sm" data-act="forn-edit" data-id="${f.id}">Editar</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+  if (V.cad === 'veiculos') body = `<div class="row"><button class="btn primary" data-act="veic-edit">${ic('plus', 18)} Veículo</button></div>
+    <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Placa</th><th>Descrição</th><th></th></tr></thead><tbody>
+    ${S.veiculos.map(v => `<tr><td><span class="plate">${esc(v.placa)}</span></td><td>${esc(v.descricao)}</td><td><button class="btn sm" data-act="veic-edit" data-id="${v.id}">Editar</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+  if (V.cad === 'usuarios') body = `<div class="row"><button class="btn primary" data-act="user-edit">${ic('plus', 18)} Usuário</button></div>
+    <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Nome</th><th>Perfil</th><th>Alçada</th><th>Placa padrão</th><th></th></tr></thead><tbody>
+    ${S.users.map(u => `<tr><td><b>${esc(u.nome)}</b>${u.email ? `<div class="small muted">${esc(u.email)}</div>` : ''}${u.ativo === false ? ' <span class="pill neutral">inativo</span>' : ''}</td><td>${PERFIS[u.perfil]}</td><td class="num">${u.perfil === 'gestor' ? 'Sem limite' : alcada(u) ? fmtR(alcada(u)) : 'Só emergencial'}</td><td>${esc(u.placa)}</td><td><button class="btn sm" data-act="user-edit" data-id="${u.id}">Editar</button></td></tr>`).join('')}
+    </tbody></table></div>`;
+  return `<div class="content" style="max-width:1000px"><div class="page-h"><h1>Cadastros</h1></div>
+    <div class="seg blue" style="max-width:480px">${tabs.map(([v, l]) => `<button data-act="cad-tab" data-v="${v}" aria-pressed="${V.cad === v}">${l}</button>`).join('')}</div>${body}</div>`;
+}
+function viewConfig(){
+  if (!pode.config(ME)) return `<div class="content"><div class="card empty">Sem acesso.</div></div>`;
+  const c = S.config;
+  const vr = v => v == null ? '' : String(v).replace('.', ',');
+  return `<div class="content" style="max-width:720px"><div class="page-h"><h1>Regras e alçadas</h1></div>
+    <form id="form-config" class="stack" style="gap:16px">
+      <div class="card pad stack"><h2>Alçadas de aprovação</h2>
+        <p class="small muted" style="margin:0">Até esse valor a pessoa aprova a própria compra e já recebe o número da OC. Acima, vai para quem tem limite. O gestor não tem limite.</p>
+        <div class="fgrid">
+          <div class="field"><label for="cf-mot">Motorista (R$)</label><input class="input num" id="cf-mot" inputmode="decimal" value="${vr(c.alcada.motorista)}"><span class="hint">0 = só compra emergencial</span></div>
+          <div class="field"><label for="cf-mec">Mecânico (R$)</label><input class="input num" id="cf-mec" inputmode="decimal" value="${vr(c.alcada.mecanico)}"></div>
+          <div class="field"><label for="cf-ana">Analista operacional (R$)</label><input class="input num" id="cf-ana" inputmode="decimal" value="${vr(c.alcada.analista)}"></div>
+        </div></div>
+      <div class="card pad stack"><h2>Cotações exigidas</h2>
+        <div class="fgrid">
+          <div class="field"><label for="cf-f1">1 cotação até (R$)</label><input class="input num" id="cf-f1" inputmode="decimal" value="${vr(c.faixas[0].ate)}"></div>
+          <div class="field"><label for="cf-f2">2 cotações até (R$)</label><input class="input num" id="cf-f2" inputmode="decimal" value="${vr(c.faixas[1].ate)}"></div>
+        </div><span class="hint">Acima do segundo valor, 3 cotações. Analista e gestor podem dispensar com justificativa.</span></div>
+      <div class="card pad stack"><h2>Compra emergencial e recebimento</h2>
+        <div class="fgrid">
+          <div class="field"><label for="cf-teto">Teto emergencial (R$)</label><input class="input num" id="cf-teto" inputmode="decimal" value="${vr(c.tetoEmergencial)}"><span class="hint">Acima disso, vai ao gestor como urgente.</span></div>
+          <div class="field"><label for="cf-prazo">Prazo para anexar NF (horas)</label><input class="input num" id="cf-prazo" inputmode="numeric" value="${c.prazoRegularizacaoH}"></div>
+          <div class="field"><label for="cf-tol">Tolerância da NF sobre o aprovado (%)</label><input class="input num" id="cf-tol" inputmode="decimal" value="${vr(c.toleranciaNF)}"><span class="hint">NF acima disso volta para o gestor.</span></div>
+        </div></div>
+      <button class="btn primary block" type="submit">Salvar regras</button>
+    </form>
+    ${REMOTE ? '' : `<div class="card pad stack"><h2>Dados deste aparelho</h2><p class="small muted" style="margin:0">No modo de teste, tudo fica salvo neste navegador.</p>
+      <div class="row"><button class="btn danger" data-act="limpar-exemplo">Apagar dados de exemplo</button></div></div>`}
+  </div>`;
+}
+
+/* =========================================================
+   MODAIS
+   ========================================================= */
+function fornOptions(sel){ return `<option value="">Escolha</option>${S.fornecedores.map(f => `<option value="${f.id}" ${sel === f.id ? 'selected' : ''}>${esc(f.nome)}</option>`).join('')}`; }
+let modalAnexo = null;
+function modalCotacao(m, c){
+  modalAnexo = null;
+  openModal(`<h2>Nova cotação</h2>
+    <form id="mform" class="stack" style="gap:12px">
+      ${!c ? `<div class="field"><label for="mc-desc">O que está sendo comprado</label><input class="input" id="mc-desc" value="${esc(m.descricao)}"></div>` : `<span class="muted">${esc(c.descricao)}</span>`}
+      <div class="field"><label for="mc-forn">Fornecedor</label><select class="input" id="mc-forn">${fornOptions('')}</select>
+        <button type="button" class="btn sm" data-act="forn-rapido" data-ret="cot" style="align-self:flex-start">${ic('plus', 16)} Fornecedor novo</button></div>
+      <div class="fgrid">
+        <div class="field"><label for="mc-valor">Valor total (R$)</label><input class="input num" id="mc-valor" inputmode="decimal" placeholder="0,00"></div>
+        <div class="field"><label for="mc-prazo">Prazo</label><input class="input" id="mc-prazo" placeholder="Ex.: hoje 16h"></div>
+        <div class="field"><label for="mc-pag">Pagamento</label><input class="input" id="mc-pag" placeholder="Ex.: 28 dias, à vista"></div>
+        <div class="field"><label for="mc-anexo">Anexo (foto do orçamento)</label><input class="input" id="mc-anexo" type="file" accept="image/*"></div>
+      </div>
+      <div class="field"><label for="mc-obs">Observação</label><input class="input" id="mc-obs" placeholder="Opcional"></div>
+      <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Salvar cotação</button></div>
+    </form>`, async () => {
+      const fid = val('mc-forn'), valor = parseR(val('mc-valor'));
+      if (!fid) return toast('Escolha o fornecedor.', true);
+      if (!valor) return toast('Informe o valor.', true);
+      let compra = c;
+      if (!compra) compra = await api.novaCompra(m, val('mc-desc').trim() || m.descricao, m.tipo);
+      await api.addCotacao(m, compra, { fornecedorId: fid, valor, prazo: val('mc-prazo'), pagamento: val('mc-pag'), obs: val('mc-obs'), anexo: modalAnexo });
+      closeModal(); render(); toast('Cotação salva.');
+    });
+}
+function modalNovaCompra(m){
+  openModal(`<h2>Outra compra</h2><p class="muted" style="margin:0">Use quando a mesma manutenção precisa de outro fornecedor, como peça na autopeças e mão de obra na oficina. Cada compra gera sua própria OC.</p>
+    <form id="mform" class="stack">
+      <div class="field"><label for="nc-desc">O que será comprado</label><input class="input" id="nc-desc" placeholder="Ex.: mão de obra de instalação"></div>
+      <div class="field"><label for="nc-tipo">Tipo</label><select class="input" id="nc-tipo"><option value="peca">Peça</option><option value="servico">Serviço</option><option value="ambos">Peça + serviço</option></select></div>
+      <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Criar e cotar</button></div></form>`,
+    async () => { const d = val('nc-desc').trim(); if (!d) return toast('Descreva a compra.', true);
+      const c = await api.novaCompra(m, d, val('nc-tipo')); modalCotacao(m, c); });
+}
+function modalJustificar({ titulo, texto, label, obrig, botao, onOk }){
+  openModal(`<h2>${titulo}</h2>${texto ? `<p class="muted" style="margin:0">${texto}</p>` : ''}
+    <form id="mform" class="stack"><div class="field"><label for="mj">${label}</label><textarea class="input" id="mj" rows="3"></textarea></div>
+    <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">${botao}</button></div></form>`,
+    async () => { const t = val('mj').trim(); if (obrig && !t) return toast('Preencha a justificativa.', true); await onOk(t); });
+}
+let fornRet = null;
+function modalFornecedor(f, ret){
+  fornRet = ret || null;
+  const rapido = !!ret;
+  const x = f || { nome:'', cnpj:'', cidade:'', telefone:'', categoria:'Peças', provisorio: rapido && !pode.cadastrarForn(ME) };
+  const prev = ret === 'cot' ? { forn: val('mc-forn'), valor: val('mc-valor'), prazo: val('mc-prazo'), pag: val('mc-pag'), obs: val('mc-obs'), desc: val('mc-desc') } : null;
+  const ctx = ret === 'cot' ? fornCtx : null;
+  openModal(`<h2>${f ? 'Editar fornecedor' : 'Novo fornecedor'}</h2>
+    ${rapido && !pode.cadastrarForn(ME) ? '<p class="small muted" style="margin:0">Cadastro rápido. O analista completa os dados depois.</p>' : ''}
+    <form id="mform" class="stack" style="gap:12px">
+      <div class="field"><label for="mf-nome">Nome</label><input class="input" id="mf-nome" value="${esc(x.nome)}"></div>
+      <div class="fgrid">
+        <div class="field"><label for="mf-tel">Telefone / WhatsApp</label><input class="input" id="mf-tel" inputmode="tel" value="${esc(x.telefone)}"></div>
+        <div class="field"><label for="mf-cidade">Cidade</label><input class="input" id="mf-cidade" value="${esc(x.cidade)}"></div>
+        <div class="field"><label for="mf-cnpj">CNPJ</label><input class="input" id="mf-cnpj" inputmode="numeric" value="${esc(x.cnpj)}"></div>
+        <div class="field"><label for="mf-cat">Categoria</label><select class="input" id="mf-cat">${['Peças', 'Serviços', 'Pneus', 'Elétrica', 'Lubrificantes', 'Outros'].map(k => `<option ${x.categoria === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
+      </div>
+      <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
+    </form>`, async () => {
+      const nome = val('mf-nome').trim(); if (!nome) return toast('Informe o nome.', true);
+      const novo = await api.salvarFornecedor({ ...(f ? { id: f.id } : {}), nome, telefone: val('mf-tel'), cidade: val('mf-cidade'), cnpj: val('mf-cnpj'), categoria: val('mf-cat'),
+        provisorio: f ? (pode.cadastrarForn(ME) ? false : f.provisorio) : !pode.cadastrarForn(ME) });
+      if (ret === 'draft') { draft.fornecedorId = novo.id; closeModal(); render(); }
+      else if (ret === 'cot' && ctx) { modalCotacao(ctx.m, ctx.c); setTimeout(() => { setVal('mc-forn', novo.id); if (prev) { setVal('mc-valor', prev.valor); setVal('mc-prazo', prev.prazo); setVal('mc-pag', prev.pag); setVal('mc-obs', prev.obs); if (prev.desc) setVal('mc-desc', prev.desc); } }, 0); }
+      else { closeModal(); render(); }
+      toast('Fornecedor salvo.');
+    });
+}
+let fornCtx = null;
+function modalVeiculo(v){
+  const x = v || { placa:'', descricao:'' };
+  openModal(`<h2>${v ? 'Editar veículo' : 'Novo veículo'}</h2><form id="mform" class="stack">
+    <div class="field"><label for="mv-placa">Placa</label><input class="input" id="mv-placa" value="${esc(x.placa)}" placeholder="ABC-1D23" style="text-transform:uppercase"></div>
+    <div class="field"><label for="mv-desc">Descrição</label><input class="input" id="mv-desc" value="${esc(x.descricao)}" placeholder="Ex.: cavalo, carreta, modelo"></div>
+    <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Salvar</button></div></form>`,
+    async () => { const p = normPlaca(val('mv-placa')); if (p.length < 7) return toast('Placa inválida.', true);
+      if (S.veiculos.some(z => z.placa === p && z.id !== v?.id)) return toast('Essa placa já existe.', true);
+      await api.salvarVeiculo({ ...(v ? { id: v.id } : {}), placa: p, descricao: val('mv-desc') }); closeModal(); render(); toast('Veículo salvo.'); });
+}
+function modalSenha(dica){
+  openModal(`<h2>${dica ? 'Criar nova senha' : 'Trocar senha'}</h2><form id="mform" class="stack">
+    <div class="field"><label for="ns-1">Nova senha</label><input class="input" id="ns-1" type="password" autocomplete="new-password"><span class="hint">Mínimo de 8 caracteres.</span></div>
+    <div class="field"><label for="ns-2">Repita a nova senha</label><input class="input" id="ns-2" type="password" autocomplete="new-password"></div>
+    <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Salvar senha</button></div></form>`,
+    async () => { const a = val('ns-1'), b = val('ns-2');
+      if (a.length < 8) return toast('A senha precisa ter pelo menos 8 caracteres.', true);
+      if (a !== b) return toast('As duas senhas não são iguais.', true);
+      const { error } = await sb.auth.updateUser({ password: a }); if (error) throw new Error(error.message);
+      closeModal(); toast('Senha alterada.'); });
+}
+function modalUsuario(u){
+  if (REMOTE && !u) {
+    openModal(`<h2>Novo usuário</h2>
+      <ol class="stack" style="margin:0;padding-left:20px;gap:8px">
+        <li>No Supabase, abra <b>Authentication › Users</b> e clique em <b>Add user › Create new user</b>.</li>
+        <li>Informe o e-mail e uma senha provisória e marque <b>Auto Confirm User</b>.</li>
+        <li>A pessoa aparece aqui como motorista. Toque em <b>Editar</b> para ajustar nome, perfil e placa.</li>
+        <li>Passe o e-mail e a senha provisória; ela troca a senha em Mais › Trocar senha.</li>
+      </ol>
+      <div class="foot"><button class="btn primary" data-act="fechar">Entendi</button></div>`);
+    return;
+  }
+  const x = u || { nome:'', perfil:'motorista', placa:'' };
+  openModal(`<h2>${u ? 'Editar usuário' : 'Novo usuário'}</h2><form id="mform" class="stack">
+    <div class="field"><label for="mu-nome">Nome</label><input class="input" id="mu-nome" value="${esc(x.nome)}"></div>
+    <div class="field"><label for="mu-perfil">Perfil</label><select class="input" id="mu-perfil">${Object.entries(PERFIS).map(([k, l]) => `<option value="${k}" ${x.perfil === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+    <div class="field"><label for="mu-placa">Placa padrão (motorista)</label><select class="input" id="mu-placa"><option value="">Nenhuma</option>${S.veiculos.map(v => `<option ${x.placa === v.placa ? 'selected' : ''}>${esc(v.placa)}</option>`).join('')}</select></div>
+    ${u ? `<label class="switch"><input type="checkbox" id="mu-ativo" ${x.ativo !== false ? 'checked' : ''} style="accent-color:var(--primary)"><span class="stack" style="gap:2px"><b>Acesso ativo</b><span class="small muted">Desmarque para bloquear o acesso sem apagar o histórico.</span></span></label>` : ''}
+    <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Salvar</button></div></form>`,
+    async () => { const n = val('mu-nome').trim(); if (!n) return toast('Informe o nome.', true);
+      await api.salvarUsuario({ ...(u ? { id: u.id } : {}), nome: n, perfil: val('mu-perfil'), placa: val('mu-placa'), ativo: u ? document.getElementById('mu-ativo')?.checked !== false : true }); closeModal(); render(); toast('Usuário salvo.'); });
+}
+let nfFoto = null;
+function modalNF(o){
+  nfFoto = null;
+  openModal(`<h2>Recebimento · ${esc(o.num)}</h2><p class="muted" style="margin:0">Aprovado: <b class="num">${fmtR(o.valor)}</b>. Tolerância de ${String(S.config.toleranciaNF).replace('.', ',')}%.</p>
+    <form id="mform" class="stack" style="gap:12px">
+      <div class="fgrid">
+        <div class="field"><label for="nf-num">Número da NF</label><input class="input" id="nf-num" inputmode="numeric"></div>
+        <div class="field"><label for="nf-valor">Valor da NF (R$)</label><input class="input num" id="nf-valor" inputmode="decimal" value="${String(o.valor.toFixed(2)).replace('.', ',')}"></div>
+      </div>
+      <div class="field"><label for="nf-foto">Foto da NF</label><input class="input" id="nf-foto" type="file" accept="image/*" capture="environment"></div>
+      <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Registrar</button></div>
+    </form>`, async () => {
+      const v = parseR(val('nf-valor')); if (!v) return toast('Informe o valor da NF.', true);
+      if (!nfFoto && !val('nf-num').trim()) return toast('Informe o número ou anexe a foto da NF.', true);
+      const st = await api.registrarNF(o, { numero: val('nf-num').trim(), valor: v, foto: nfFoto });
+      closeModal(); render();
+      toast(st === 'divergente' ? 'NF acima da tolerância. Foi para o gestor.' : 'Recebimento registrado.', st === 'divergente');
+    });
+}
+const val = id => document.getElementById(id)?.value ?? '';
+const setVal = (id, v) => { const el = document.getElementById(id); if (el && v != null) el.value = v; };
+
+/* =========================================================
+   EVENTOS
+   ========================================================= */
+let busy = false;
+function setBusy(b){ busy = b; document.body.style.cursor = b ? 'progress' : ''; }
+document.addEventListener('click', async e => {
+  if (busy) { e.preventDefault(); return; }
+  const g = e.target.closest('[data-go]');
+  if (g) { e.preventDefault(); if (g.dataset.go === 'nova' && V.view !== 'nova') draft = null; go(g.dataset.go, g.dataset.id || null); return; }
+  const a = e.target.closest('[data-act]');
+  if (!a) return;
+  const act = a.dataset.act;
+  if (act === 'modal-bg') { if (e.target === a) closeModal(); return; }
+  e.preventDefault();
+  const m = manut(a.dataset.m || V.id);
+  const c = m?.compras.find(x => x.id === a.dataset.c);
+  setBusy(true);
+  try {
+  switch (act) {
+    case 'entrar': ME = user(a.dataset.id); lsSet(LS_USER, ME.id); V.view = 'fila'; V.so = ''; render(); break;
+    case 'sair': if (REMOTE) { await sb.auth.signOut(); } ME = null; lsSet(LS_USER, null); render(); break;
+    case 'esqueci': {
+      const em = val('lg-email').trim();
+      if (!em) { toast('Digite seu e-mail e toque de novo em "Esqueci minha senha".', true); break; }
+      const { error } = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.href.split('#')[0] });
+      if (error) throw new Error(error.message);
+      toast('Enviamos um link para criar nova senha no seu e-mail.'); break; }
+    case 'trocar-senha': modalSenha(); break;
+    case 'fechar': closeModal(); break;
+    case 'tab': V.tab = a.dataset.v; if (V.so === 'encerradas') V.so = ''; lsSet(LS_TAB, V.tab); render(); break;
+    case 'so': V.so = a.dataset.v; render(); break;
+    case 'cad-tab': V.cad = a.dataset.v; render(); break;
+    case 'limpar-exemplo':
+      openModal(`<h2>Começar do zero?</h2><p class="muted" style="margin:0">Apaga demandas, ordens, fornecedores e veículos de exemplo deste aparelho. Seu usuário de gestor e as regras ficam.</p>
+        <div class="foot"><button class="btn" data-act="fechar">Cancelar</button><button class="btn primary" data-act="confirma-limpar">Apagar exemplos</button></div>`); break;
+    case 'confirma-limpar':
+      S = { v:1, exemplo:false, config:S.config, users:[S.users.find(u => u.id === ME.id) || ME], veiculos:[], fornecedores:[], manutencoes:[], ordens:[], seq:{ M:0, OC:{} } };
+      persist(); closeModal(); go('cadastros'); V.cad = 'veiculos'; render(); toast('Exemplos apagados. Cadastre veículos e fornecedores.'); break;
+    /* nova demanda */
+    case 'd-placa': draft.placa = a.dataset.v; render(); break;
+    case 'd-tipo': draft.tipo = a.dataset.v; render(); break;
+    case 'd-pri': draft.prioridade = a.dataset.v; render(); break;
+    case 'rm-foto': draft.fotos.splice(+a.dataset.i, 1); render(); break;
+    case 'ver-foto': {
+      const [k, i] = a.dataset.src.split(/:(?=[^:]*$)/); let src;
+      if (k === 'draft') src = draft.fotos[+i];
+      else if (k.startsWith('m:')) src = manut(k.slice(2))?.fotos[+i];
+      else if (k.startsWith('nf:')) src = ordem(k.slice(3))?.nf?.foto;
+      if (src) openModal(`<div class="viewer"><img src="${src}" alt="Foto"></div><div class="foot"><button class="btn" data-act="fechar">Fechar</button></div>`);
+      break; }
+    case 'ver-anexo': { const q = c?.cotacoes.find(x => x.id === a.dataset.q); if (q?.anexo) openModal(`<div class="viewer"><img src="${q.anexo}" alt="Anexo da cotação"></div><div class="foot"><button class="btn" data-act="fechar">Fechar</button></div>`); break; }
+    case 'forn-rapido': if (a.dataset.ret === 'cot') { /* mantém contexto */ } modalFornecedor(null, a.dataset.ret); break;
+    /* demanda */
+    case 'pri': await api.definirPrioridade(m, a.dataset.v); render(); toast(`Definida como ${a.dataset.v}.`); break;
+    case 'atender': await api.atender(m); render(); toast('Atendimento assumido.'); break;
+    case 'comentar': modalJustificar({ titulo:'Comentar', label:'Comentário', obrig:true, botao:'Salvar', onOk: async t => { await api.comentar(m, t); closeModal(); render(); } }); break;
+    case 'cancelar-manut': modalJustificar({ titulo:'Cancelar demanda', texto:'A demanda sai da fila. OCs já geradas continuam valendo.', label:'Motivo', obrig:true, botao:'Cancelar demanda', onOk: async t => { await api.cancelarManut(m, t); closeModal(); go('fila'); toast('Demanda cancelada.'); } }); break;
+    case 'cotar-nova': fornCtx = { m, c:null }; modalCotacao(m, null); break;
+    case 'cotar': fornCtx = { m, c }; modalCotacao(m, c); break;
+    case 'nova-compra': modalNovaCompra(m); break;
+    case 'escolher': await api.escolher(m, c, a.dataset.q); render(); break;
+    case 'rm-cot': e.stopPropagation(); await api.removerCotacao(m, c, a.dataset.q); render(); break;
+    case 'cancelar-compra': await api.cancelarCompra(m, c); render(); toast('Compra cancelada.'); break;
+    case 'aprovar': case 'enviar': {
+      const falta = +a.dataset.falta, naoMenor = a.dataset.naomenor === '1';
+      const finalizar = async (just, disp) => {
+        if (act === 'aprovar') { const oc = await api.aprovar(m, c, just, disp); closeModal(); toast(`${oc.num} gerada.`); go('oc', oc.id); }
+        else { await api.enviarAprovacao(m, c, just, disp); closeModal(); render(); toast('Enviada para aprovação.'); }
+      };
+      if (falta > 0) modalJustificar({ titulo:'Dispensar cotações', texto:`A regra pede mais ${falta} cotação(ões) para este valor. A dispensa fica registrada no histórico.`, label:'Motivo da dispensa', obrig:true, botao: act === 'aprovar' ? 'Dispensar e aprovar' : 'Dispensar e enviar', onOk: t => finalizar(naoMenor ? t : c.justificativa, t) });
+      else if (naoMenor) modalJustificar({ titulo:'Escolha diferente da menor', texto:'A cotação escolhida não é a mais barata. Diga o motivo para quem aprova.', label:'Justificativa', obrig:true, botao: act === 'aprovar' ? 'Aprovar e gerar OC' : 'Enviar para aprovação', onOk: t => finalizar(t, null) });
+      else await finalizar(null, null);
+      break; }
+    case 'aprovar-direto': { const oc = await api.aprovar(m, c, null, null); toast(`${oc.num} gerada.`); go('oc', oc.id); break; }
+    case 'reprovar': modalJustificar({ titulo:'Reprovar compra', texto:'A compra volta para cotação com o seu motivo.', label:'Motivo', obrig:true, botao:'Reprovar', onOk: async t => { await api.reprovar(m, c, t); closeModal(); render(); toast('Compra reprovada.'); } }); break;
+    case 'encerrar': await api.encerrar(m); render(); toast('Manutenção encerrada.'); break;
+    case 'reabrir': await api.reabrir(m); render(); break;
+    /* ordens */
+    case 'nf': modalNF(ordem(a.dataset.o)); break;
+    case 'aceitar-div': await api.aceitarDivergencia(ordem(a.dataset.o)); render(); toast('Diferença aceita.'); break;
+    case 'revisar': await api.revisarEmergencial(ordem(a.dataset.o)); render(); toast('Emergencial revisada.'); break;
+    case 'copiar': {
+      const t = a.dataset.v;
+      try { await navigator.clipboard.writeText(t); toast('Número copiado.'); }
+      catch (err) { const el = document.getElementById('oc-num'); if (el) { const r = document.createRange(); r.selectNodeContents(el); const s = getSelection(); s.removeAllRanges(); s.addRange(r); } toast('Número selecionado. Copie com o toque longo.'); }
+      break; }
+    case 'csv': exportCSV(); break;
+    /* cadastros */
+    case 'forn-edit': modalFornecedor(a.dataset.id ? forn(a.dataset.id) : null, null); break;
+    case 'veic-edit': modalVeiculo(a.dataset.id ? S.veiculos.find(v => v.id === a.dataset.id) : null); break;
+    case 'user-edit': modalUsuario(a.dataset.id ? user(a.dataset.id) : null); break;
+  }
+  } catch (err) { console.error(err); toast(err.message || 'Algo deu errado. Tente de novo.', true); }
+  finally { setBusy(false); }
+});
+
+document.addEventListener('submit', async e => {
+  e.preventDefault();
+  if (busy) return;
+  setBusy(true);
+  try { await onSubmit(e); }
+  catch (err) { console.error(err); toast(err.message || 'Algo deu errado. Tente de novo.', true); }
+  finally { setBusy(false); }
+});
+async function onSubmit(e){
+  if (e.target.id === 'mform' && modalOnSubmit) return modalOnSubmit();
+  if (e.target.id === 'form-nova') return submitNova();
+  if (e.target.id === 'form-login') {
+    loginErro = '';
+    const { data, error } = await sb.auth.signInWithPassword({ email: val('lg-email').trim(), password: val('lg-senha') });
+    if (error) { loginErro = error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : error.message; render(); return; }
+    await entrarRemoto(data.user); return;
+  }
+  if (e.target.id === 'form-config') {
+    const n = id => parseR(val(id)) ?? 0;
+    const f1 = n('cf-f1'), f2 = n('cf-f2');
+    if (f2 <= f1) return toast('O valor de 2 cotações precisa ser maior que o de 1 cotação.', true);
+    await api.salvarConfig({ alcada: { motorista: n('cf-mot'), mecanico: n('cf-mec'), analista: n('cf-ana') },
+      faixas: [ { ate: f1, n: 1 }, { ate: f2, n: 2 }, { ate: null, n: 3 } ],
+      tetoEmergencial: n('cf-teto'), prazoRegularizacaoH: Math.max(1, Math.round(n('cf-prazo'))), toleranciaNF: n('cf-tol') });
+    toast('Regras salvas.'); render();
+  }
+}
+
+document.addEventListener('input', e => {
+  const el = e.target;
+  if (el.dataset.draft && draft) { draft[el.dataset.draft] = el.value; return; }
+  if (el.id === 'busca-fila') { V.busca = el.value; const pos = el.selectionStart; render(); const n = document.getElementById('busca-fila'); n.focus(); n.setSelectionRange(pos, pos); }
+  if (el.id === 'busca-oc') { V.ocBusca = el.value; const pos = el.selectionStart; render(); const n = document.getElementById('busca-oc'); n.focus(); n.setSelectionRange(pos, pos); }
+});
+
+document.addEventListener('change', async e => {
+  const el = e.target;
+  if (el.id === 'placa-fila' || el.id === 'placa-fila-m') { V.placa = el.value; render(); }
+  if (el.id === 'd-emerg') { draft.emergencial = el.checked; render(); }
+  if (el.id === 'd-forn') draft.fornecedorId = el.value;
+  if (el.id === 'd-fotos') {
+    const files = [...el.files].slice(0, 8);
+    for (const f of files) { try { draft.fotos.push(await compressImage(f)); } catch (err) { toast('Não consegui ler uma das fotos.', true); } }
+    render();
+  }
+  if (el.id === 'mc-anexo' && el.files[0]) { try { modalAnexo = await compressImage(el.files[0], 1400, 0.7); } catch (err) { toast('Não consegui ler o anexo.', true); } }
+  if (el.id === 'nf-foto' && el.files[0]) { try { nfFoto = await compressImage(el.files[0], 1600, 0.72); } catch (err) { toast('Não consegui ler a foto da NF.', true); } }
+});
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('#modal-root .modal')) closeModal(); });
+
+function exportCSV(){
+  const cab = ['OC', 'Data aprovação', 'Placa', 'Fornecedor', 'CNPJ', 'Manutenção', 'Descrição', 'Valor aprovado', 'NF', 'Valor NF', 'Situação', 'Emergencial', 'Aprovado por'];
+  const linhas = visOrdens().map(o => { const m = manut(o.manutencaoId), c = m?.compras.find(x => x.id === o.compraId), f = forn(o.fornecedorId);
+    return [o.num, fmtD(o.aprovadoEm), o.placa, f?.nome || '', f?.cnpj || '', m?.num || '', c?.descricao || '', String(o.valor.toFixed(2)).replace('.', ','),
+      o.nf?.numero || '', o.nf ? String(o.nf.valor.toFixed(2)).replace('.', ',') : '', o.status, o.emergencial ? 'Sim' : 'Não', nomeU(o.aprovadoPor)]; });
+  const csv = '﻿' + [cab, ...linhas].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
+  try {
+    const url = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+    const a = document.createElement('a'); a.href = url; a.download = `ordens-de-compra-${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove(); setTimeout(() => URL.revokeObjectURL(url), 2000);
+    toast('Planilha gerada.');
+  } catch (err) { toast('Não foi possível baixar a planilha neste navegador.', true); }
+}
+
+/* ---------- início ---------- */
+async function boot(){
+  if (!REMOTE) {
+    S = load();
+    if (!S.config) S.config = defaultConfig();
+    const id = lsGet(LS_USER); ME = id ? user(id) || null : null;
+    render(); return;
+  }
+  S = { v:1, exemplo:false, config:defaultConfig(), users:[], veiculos:[], fornecedores:[], manutencoes:[], ordens:[], seq:{} };
+  sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true } });
+  sb.auth.onAuthStateChange((ev) => {
+    if (ev === 'PASSWORD_RECOVERY') setTimeout(() => modalSenha(true), 300);
+    if (ev === 'SIGNED_OUT') { ME = null; render(); }
+  });
+  document.getElementById('app').innerHTML = '<div class="login"><span class="muted">Carregando…</span></div>';
+  const { data: { session } } = await sb.auth.getSession();
+  if (session) await entrarRemoto(session.user); else render();
+}
+boot();
+let lastW = window.innerWidth;
+window.addEventListener('resize', () => { if ((lastW <= 820) !== (window.innerWidth <= 820)) render(); lastW = window.innerWidth; });
+if ('serviceWorker' in navigator && location.protocol === 'https:') { try { navigator.serviceWorker.register('sw.js').catch(() => {}); } catch (e) {} }
+</script>
+
+</body>
+</html>
