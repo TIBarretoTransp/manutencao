@@ -643,3 +643,10 @@ begin
     end;
   end loop;
 end $$;
+
+-- ---------------------------------------------------------------------
+-- ALÇADA INDIVIDUAL (opcional; em branco vale a do perfil)
+-- Aplicado no projeto como migração "alcada_individual".
+-- ---------------------------------------------------------------------
+alter table public.profiles add column if not exists alcada numeric(12,2);
+-- funções _alcada_de, aprovar, reprovar e salvar_usuario atualizadas na migração.

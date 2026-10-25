@@ -458,7 +458,7 @@ const manut = id => S.manutencoes.find(m => m.id === id);
 const ordem = id => S.ordens.find(o => o.id === id);
 const nomeU = id => user(id)?.nome || '—';
 const nomeF = id => forn(id)?.nome || '—';
-const alcada = u => u.perfil === 'gestor' ? Infinity : (S.config.alcada[u.perfil] || 0);
+const alcada = u => u.perfil === 'gestor' ? Infinity : (u.alcada != null && u.alcada !== '' ? Number(u.alcada) : (S.config.alcada[u.perfil] || 0));
 function cotNecessarias(valor){
   for (const f of S.config.faixas) if (f.ate == null || valor <= f.ate) return f.n;
   return 3;
@@ -672,7 +672,7 @@ async function reload(){
     config: { alcada: { motorista: num(cfg.alcada_motorista), mecanico: num(cfg.alcada_mecanico), analista: num(cfg.alcada_analista) },
       faixas: [ { ate: num(cfg.faixa1), n: 1 }, { ate: num(cfg.faixa2), n: 2 }, { ate: null, n: 3 } ],
       tetoEmergencial: num(cfg.teto_emergencial), prazoRegularizacaoH: cfg.prazo_regularizacao_h, toleranciaNF: num(cfg.tolerancia_nf) },
-    users: p.map(u => ({ id: u.id, nome: u.nome || u.email, email: (u.email || '').endsWith(TEL_DOM) ? '' : u.email, telefone: u.telefone || '', perfil: u.perfil, placa: u.placa, ativo: u.ativo })),
+    users: p.map(u => ({ id: u.id, nome: u.nome || u.email, email: (u.email || '').endsWith(TEL_DOM) ? '' : u.email, telefone: u.telefone || '', perfil: u.perfil, placa: u.placa, ativo: u.ativo, alcada: u.alcada == null ? null : Number(u.alcada) })),
     veiculos: vs.map(v => ({ id: v.id, placa: v.placa, descricao: v.descricao })),
     fornecedores: fs.map(f => ({ id: f.id, nome: f.nome, cnpj: f.cnpj, cidade: f.cidade, telefone: f.telefone, categoria: f.categoria, provisorio: f.provisorio })),
     manutencoes: ms.map(m => ({ id: m.id, num: m.num, placa: m.placa, descricao: m.descricao, tipo: m.tipo, prioridade: m.prioridade, prioridadeConfirmada: m.prioridade_confirmada,
@@ -738,8 +738,12 @@ const apiRemote = {
   async salvarFornecedor(f){ const id = await rpc('salvar_fornecedor', { p: f }); await reload(); return forn(id); },
   salvarVeiculo: v => run('salvar_veiculo', { p: { ...v, placa: normPlaca(v.placa) } }),
   async salvarUsuario(u){
-    if (!u.id) { await adminUsuarios({ acao: 'criar', nome: u.nome, telefone: u.telefone, senha: u.senha, perfil: u.perfil, placa: u.placa }); await reload(); return; }
-    await run('salvar_usuario', { p: { id: u.id, nome: u.nome, perfil: u.perfil, placa: u.placa, ativo: u.ativo !== false } });
+    if (!u.id) {
+      const r = await adminUsuarios({ acao: 'criar', nome: u.nome, telefone: u.telefone, senha: u.senha, perfil: u.perfil, placa: u.placa });
+      if (u.alcada != null && r?.id) await rpc('salvar_usuario', { p: { id: r.id, nome: u.nome, perfil: u.perfil, placa: u.placa, ativo: true, alcada: u.alcada } });
+      await reload(); return;
+    }
+    await run('salvar_usuario', { p: { id: u.id, nome: u.nome, perfil: u.perfil, placa: u.placa, ativo: u.ativo !== false, alcada: u.alcada } });
   },
   redefinirSenha: (u, senha) => adminUsuarios({ acao: 'senha', id: u.id, senha }),
   salvarConfig: c => run('salvar_config', { p: { alcada_motorista: c.alcada.motorista, alcada_mecanico: c.alcada.mecanico, alcada_analista: c.alcada.analista,
@@ -1325,9 +1329,9 @@ function viewCadastros(){
     <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Placa</th><th>Descrição</th><th></th></tr></thead><tbody>
     ${S.veiculos.map(v => `<tr><td><span class="plate">${esc(v.placa)}</span></td><td>${esc(v.descricao)}</td><td><button class="btn sm" data-act="veic-edit" data-id="${v.id}">Editar</button></td></tr>`).join('')}
     </tbody></table></div>`;
-  if (V.cad === 'usuarios') body = `<div class="row"><button class="btn primary" data-act="user-edit">${ic('plus', 18)} Usuário</button></div>
+  if (V.cad === 'usuarios') body = `<div class="row"><button class="btn primary" data-act="user-edit">${ic('plus', 18)} Usuário</button><button class="btn" data-go="config">${ic('gear', 18)} Alçadas padrão por perfil</button></div>
     <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Nome</th><th>Perfil</th><th>Alçada</th><th>Placa padrão</th><th></th></tr></thead><tbody>
-    ${S.users.map(u => `<tr><td><b>${esc(u.nome)}</b>${u.telefone || u.email ? `<div class="small muted">${u.telefone ? esc(fmtTel(u.telefone)) : esc(u.email)}</div>` : ''}${u.ativo === false ? ' <span class="pill neutral">inativo</span>' : ''}</td><td>${PERFIS[u.perfil]}</td><td class="num">${u.perfil === 'gestor' ? 'Sem limite' : alcada(u) ? fmtR(alcada(u)) : 'Só emergencial'}</td><td>${esc(u.placa)}</td><td><button class="btn sm" data-act="user-edit" data-id="${u.id}">Editar</button></td></tr>`).join('')}
+    ${S.users.map(u => `<tr><td><b>${esc(u.nome)}</b>${u.telefone || u.email ? `<div class="small muted">${u.telefone ? esc(fmtTel(u.telefone)) : esc(u.email)}</div>` : ''}${u.ativo === false ? ' <span class="pill neutral">inativo</span>' : ''}</td><td>${PERFIS[u.perfil]}</td><td class="num">${u.perfil === 'gestor' ? 'Sem limite' : alcada(u) ? fmtR(alcada(u)) : 'Só emergencial'}${u.perfil !== 'gestor' && u.alcada != null ? ' <span class="pill info" style="font-size:11px">individual</span>' : ''}</td><td>${esc(u.placa)}</td><td><button class="btn sm" data-act="user-edit" data-id="${u.id}">Editar</button></td></tr>`).join('')}
     </tbody></table></div>`;
   return `<div class="content" style="max-width:1000px"><div class="page-h"><h1>Cadastros</h1></div>
     <div class="seg blue" style="max-width:480px">${tabs.map(([v, l]) => `<button data-act="cad-tab" data-v="${v}" aria-pressed="${V.cad === v}">${l}</button>`).join('')}</div>${body}</div>`;
@@ -1473,13 +1477,19 @@ function modalUsuario(u){
       <div class="field"><label for="mu-perfil">Perfil</label><select class="input" id="mu-perfil">${Object.entries(PERFIS).map(([k, l]) => `<option value="${k}" ${x.perfil === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
       <div class="field"><label for="mu-placa">Placa padrão (motorista)</label><select class="input" id="mu-placa"><option value="">Nenhuma</option>${S.veiculos.map(v => `<option ${x.placa === v.placa ? 'selected' : ''}>${esc(v.placa)}</option>`).join('')}</select></div>
     </div>
+    <div class="field" id="mu-alc-box"><label for="mu-alc">Alçada individual (R$)</label>
+      <input class="input num" id="mu-alc" inputmode="decimal" placeholder="Padrão do perfil" value="${x.alcada != null ? String(x.alcada).replace('.', ',') : ''}">
+      <span class="hint" id="mu-alc-hint">Até esse valor a pessoa aprova a própria compra e gera a OC. Em branco, vale a alçada do perfil (${esc(Object.entries(PERFIS).filter(([k]) => k !== 'gestor').map(([k, l]) => `${l.split(' ')[0]} ${fmtR(S.config.alcada[k] || 0)}`).join(' · '))}). Gestor não tem limite. <a href="#" data-go="config">Alterar padrões</a></span></div>
     ${!novo ? `<label class="switch"><input type="checkbox" id="mu-ativo" ${x.ativo !== false ? 'checked' : ''} style="accent-color:var(--primary)"><span class="stack" style="gap:2px"><b>Acesso ativo</b><span class="small muted">Desmarque para bloquear o acesso sem apagar o histórico.</span></span></label>` : ''}
     ${!novo && REMOTE ? `<button type="button" class="btn" data-act="user-senha" data-id="${u.id}" style="align-self:flex-start">Redefinir senha</button>` : ''}
     <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">${novo ? 'Criar usuário' : 'Salvar'}</button></div></form>`,
     async () => {
       const n = val('mu-nome').trim(); if (!n) return toast('Informe o nome.', true);
+      const alcTxt = val('mu-alc').trim();
+      const alc = alcTxt === '' ? null : parseR(alcTxt);
+      if (alcTxt !== '' && (alc == null || alc < 0)) return toast('Alçada inválida. Use um valor em reais ou deixe em branco.', true);
       const dados = { ...(u ? { id: u.id } : {}), nome: n, perfil: val('mu-perfil'), placa: val('mu-placa'),
-        ativo: u ? document.getElementById('mu-ativo')?.checked !== false : true };
+        ativo: u ? document.getElementById('mu-ativo')?.checked !== false : true, alcada: val('mu-perfil') === 'gestor' ? null : alc };
       if (novo && REMOTE) {
         const t = normTel(val('mu-tel')); if (!t) return toast('Celular inválido. Use DDD + número.', true);
         const sn = val('mu-senha'); if (sn.length < 6) return toast('A senha provisória precisa ter pelo menos 6 caracteres.', true);
@@ -1526,7 +1536,7 @@ function setBusy(b){ busy = b; document.body.style.cursor = b ? 'progress' : '';
 document.addEventListener('click', async e => {
   if (busy) { e.preventDefault(); return; }
   const g = e.target.closest('[data-go]');
-  if (g) { e.preventDefault(); if (g.dataset.go === 'nova' && V.view !== 'nova') draft = null; go(g.dataset.go, g.dataset.id || null); return; }
+  if (g) { e.preventDefault(); if (g.closest('#modal-root')) closeModal(); if (g.dataset.go === 'nova' && V.view !== 'nova') draft = null; go(g.dataset.go, g.dataset.id || null); return; }
   const a = e.target.closest('[data-act]');
   if (!a) return;
   const act = a.dataset.act;
