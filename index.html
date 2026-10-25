@@ -116,11 +116,12 @@ h1,h2,h3{margin:0;text-wrap:balance}
 /* fila */
 .qhead{display:flex;align-items:center;gap:10px;padding:12px 16px;border-bottom:1px solid var(--line)}
 .dot{width:10px;height:10px;border-radius:5px;flex:none}
-.qrow{display:grid;grid-template-columns:64px 100px minmax(0,1fr) 130px 190px 96px 62px;gap:12px;align-items:center;padding:11px 16px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;cursor:pointer;font-size:14px;color:var(--fg)}
+.qrow{display:grid;grid-template-columns:64px 100px minmax(0,1fr) 176px 104px 64px;gap:12px;align-items:center;padding:11px 16px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;cursor:pointer;font-size:14px;color:var(--fg)}
 .qrow:hover{background:var(--surface-2)}
 .qrow:last-child{border-bottom:0}
 .qscroll{overflow-x:auto}
-.qscroll .qrow{min-width:780px}
+.qscroll .qrow{min-width:620px}
+.qrow .quem{display:block;font-size:12px;font-weight:500;color:var(--muted);margin-top:2px}
 .qcard{display:flex;flex-direction:column;gap:7px;padding:14px;border:1px solid var(--line);border-radius:14px;background:var(--surface);box-shadow:var(--shadow);text-align:left;width:100%;cursor:pointer;color:var(--fg)}
 .qcard .t{font-size:17px;font-weight:700;line-height:1.25}
 .qcard .meta{display:flex;gap:12px;font-size:13px;color:var(--muted);flex-wrap:wrap;align-items:center}
@@ -200,7 +201,7 @@ textarea.input{resize:vertical;min-height:84px}
 /* OC */
 .ocbig{background:var(--bar);color:var(--on-bar);border-radius:16px;padding:20px;display:flex;flex-direction:column;align-items:center;gap:4px;text-align:center}
 .ocbig .l{font-size:12px;font-weight:700;letter-spacing:1.2px;color:var(--on-bar-2)}
-.ocbig .n{font-family:var(--f-display);font-size:48px;font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1.1}
+.ocbig .n{white-space:nowrap;font-family:var(--f-display);font-size:clamp(34px,11vw,48px);font-weight:800;letter-spacing:1px;font-variant-numeric:tabular-nums;line-height:1.1}
 .olist{display:flex;flex-direction:column}
 .orow{display:grid;grid-template-columns:120px 100px minmax(160px,1fr) 120px 150px;gap:12px;align-items:center;padding:12px 16px;border:0;border-bottom:1px solid var(--line);background:none;width:100%;text-align:left;cursor:pointer;color:var(--fg);font-size:14px}
 .orow:hover{background:var(--surface-2)}
@@ -216,6 +217,14 @@ textarea.input{resize:vertical;min-height:84px}
 .viewer img{width:100%;height:auto;border-radius:10px}
 .toast{position:fixed;left:50%;transform:translateX(-50%);bottom:calc(150px + env(safe-area-inset-bottom,0px));z-index:60;background:var(--fg);color:var(--bg);padding:12px 18px;border-radius:12px;font-weight:600;max-width:min(92vw,480px);box-shadow:0 8px 24px rgba(0,0,0,.25)}
 @media (min-width:821px){.toast{bottom:28px}}
+#modal-root:not(:empty) ~ #toast-root .toast{bottom:auto;top:calc(12px + env(safe-area-inset-top,0px));z-index:70}
+.post{padding:12px 16px;display:flex;flex-direction:column;gap:8px;border-top:1px solid var(--line);background:var(--surface-2)}
+.etapa{display:grid;grid-template-columns:28px minmax(0,1fr) auto;gap:4px 10px;align-items:center;padding:12px 16px;border-bottom:1px solid var(--line)}
+.etapa:last-child{border-bottom:0}
+.etapa .ok-i{width:24px;height:24px;border-radius:12px;display:flex;align-items:center;justify-content:center;background:var(--ok-bg);color:var(--ok)}
+.etapa .pend-i{width:24px;height:24px;border-radius:12px;border:2px dashed var(--line-2)}
+.etapa .bad-i{width:24px;height:24px;border-radius:12px;background:var(--bad-bg);color:var(--bad);display:flex;align-items:center;justify-content:center;font-weight:800}
+.etapa .sub{grid-column:2/4;font-size:13px;color:var(--muted)}
 .toast.bad{background:var(--bad);color:#fff}
 
 /* login */
@@ -334,6 +343,37 @@ const LS_TAB = 'barreto-manutencao-tab';
 const CFG = window.BARRETO_CONFIG || {};
 const REMOTE = !!(CFG.supabaseUrl && CFG.supabaseAnonKey && window.supabase);
 let sb = null;
+const VAPID = CFG.vapidPublicKey || '';
+let pushAtivo = false;
+const pushSuportado = () => REMOTE && !!VAPID && 'serviceWorker' in navigator && 'PushManager' in window && 'Notification' in window;
+function b64ToU8(s){ const p = '='.repeat((4 - s.length % 4) % 4); const b = atob((s + p).replace(/-/g, '+').replace(/_/g, '/')); return Uint8Array.from([...b].map(c => c.charCodeAt(0))); }
+async function checarPush(){
+  pushAtivo = false;
+  if (!pushSuportado() || Notification.permission !== 'granted') return;
+  try { const reg = await navigator.serviceWorker.getRegistration(); const sub = reg && await reg.pushManager.getSubscription(); pushAtivo = !!sub; } catch (e) {}
+}
+async function ativarPush(){
+  if (!pushSuportado()) throw new Error('Este navegador não recebe avisos. No iPhone, instale o app na tela inicial primeiro.');
+  const perm = await Notification.requestPermission();
+  if (perm !== 'granted') throw new Error('Os avisos foram bloqueados. Libere as notificações deste site nas configurações do navegador.');
+  const reg = await navigator.serviceWorker.register('sw.js'); await navigator.serviceWorker.ready;
+  let sub = await reg.pushManager.getSubscription();
+  if (!sub) sub = await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: b64ToU8(VAPID) });
+  await rpc('salvar_push', { p: sub.toJSON() });
+  pushAtivo = true;
+}
+async function desativarPush(){
+  try { const reg = await navigator.serviceWorker.getRegistration(); const sub = reg && await reg.pushManager.getSubscription();
+    if (sub) { await rpc('remover_push', { p_endpoint: sub.endpoint }).catch(() => {}); await sub.unsubscribe(); } } catch (e) {}
+  pushAtivo = false;
+}
+function pushCard(){
+  if (!REMOTE || !VAPID || ME?.perfil !== 'gestor') return '';
+  if (pushAtivo) return `<div class="banner">${ic('check', 18)}<span>Avisos de aprovação ativados neste aparelho.</span><button class="btn sm" data-act="push-off" style="margin-left:auto">Desativar</button></div>`;
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent) && !window.navigator.standalone;
+  if (ios || !pushSuportado()) return `<div class="banner">${ic('info', 18)}<span>Para receber aviso de aprovação no iPhone, instale o app na tela inicial (Compartilhar › Adicionar à Tela de Início) e abra por lá.</span></div>`;
+  return `<div class="banner">${ic('info', 18)}<span>Receba um aviso no celular quando uma compra precisar da sua aprovação.</span><button class="btn sm primary" data-act="push-on" style="margin-left:auto">Ativar avisos</button></div>`;
+}
 
 const ICON = {
   fila:'<path d="M4 6h16M4 12h16M4 18h10"/>',
@@ -473,25 +513,37 @@ function cotNecessarias(valor){
 const escolhida = c => c.cotacoes.find(q => q.id === c.escolhidaId);
 const valorCompra = c => escolhida(c)?.valor ?? null;
 const menorCot = c => c.cotacoes.reduce((a, q) => (!a || q.valor < a.valor) ? q : a, null);
+const posteriores = c => c?.posteriores || [];
+const postNec = v => Math.max(1, cotNecessarias(v) - 1);
+const compraDeOC = o => manut(o.manutencaoId)?.compras.find(c => c.id === o.compraId);
+const valorOC = o => o.nf ? o.nf.valor : o.valor;
+function ocPend(o){
+  const np = posteriores(compraDeOC(o)).length;
+  return { entrega: !o.entregueEm, nf: !o.nf, div: o.status === 'divergente', post: !!o.emergencial && np < postNec(o.valor), np };
+}
+function difEmerg(o){
+  const ps = posteriores(compraDeOC(o));
+  return (!o.emergencial || !ps.length) ? null : o.valor - Math.min(...ps.map(p => p.valor));
+}
+const temEmergencial = m => m.compras.some(c => c.dispensa === 'Compra emergencial' && c.status !== 'cancelada');
 
 function statusManut(m){
   if (m.cancelada) return 'cancelada';
   if (m.encerradaEm) return 'encerrada';
   const cs = m.compras.filter(c => c.status !== 'cancelada');
   if (cs.some(c => c.status === 'aprovacao')) return 'aprovacao';
-  const ocs = cs.map(c => ordem(c.ocId)).filter(Boolean);
-  if (ocs.some(o => o.emergencial && !o.nf)) return 'emergencial';
   if (cs.some(c => c.status === 'cotacao' || c.status === 'reprovada')) return 'cotacao';
-  if (ocs.some(o => o.status === 'divergente')) return 'divergente';
-  if (ocs.length) return ocs.every(o => o.nf) ? 'recebida' : 'execucao';
+  const ocs = cs.map(c => ordem(c.ocId)).filter(Boolean);
+  if (ocs.some(o => !o.entregueEm)) return 'execucao';
+  if (ocs.length) return 'entregue';
   return 'aberta';
 }
 const ST = {
   aberta:['Aberta','neutral'], cotacao:['Em cotação','info'], aprovacao:['Aguardando aprovação','warn'],
-  emergencial:['Emergencial · regularizar','bad'], divergente:['NF divergente','bad'], execucao:['OC aprovada · em execução','ok'],
-  recebida:['Recebida · pode encerrar','ok'], encerrada:['Encerrada','neutral'], cancelada:['Cancelada','neutral']
+  execucao:['Aguardando entrega','ok'], entregue:['Entregue · encerrar','ok'],
+  encerrada:['Encerrada','neutral'], cancelada:['Cancelada','neutral']
 };
-const stepIndex = s => ({ aberta:0, cotacao:1, aprovacao:2, emergencial:3, divergente:3, execucao:3, recebida:3, encerrada:5, cancelada:0 })[s] ?? 0;
+const stepIndex = s => ({ aberta:0, cotacao:1, aprovacao:2, execucao:3, entregue:3, encerrada:5, cancelada:0 })[s] ?? 0;
 const pillSt = s => `<span class="pill ${ST[s][1]}">${ST[s][0]}</span>`;
 const pillPri = m => m.prioridade === 'urgente' ? '<span class="pill urg">URGENTE</span>' : '<span class="pill prog">PROGRAMADA</span>';
 
@@ -518,11 +570,10 @@ function pendentesAprovacao(u){
     if (c.status === 'aprovacao' && (valorCompra(c) ?? 0) <= alcada(u)) out.push({ m, c });
   return out;
 }
-const emergPendentes = () => S.ordens.filter(o => o.emergencial && o.status !== 'cancelada' && (!o.nf || !o.revisadaPor));
 const divergentes = () => S.ordens.filter(o => o.status === 'divergente');
 function contAprovar(u){
   let n = pendentesAprovacao(u).length;
-  if (pode.revisar(u)) n += emergPendentes().filter(o => o.nf).length + divergentes().length;
+  if (pode.revisar(u)) n += divergentes().length;
   return n;
 }
 
@@ -613,12 +664,24 @@ const apiLocal = {
     o.status = nf.valor > lim ? 'divergente' : 'recebida';
     const m = manut(o.manutencaoId);
     if (m) log(m, `Registrou NF ${nf.numero || ''} de ${fmtR(nf.valor)} na ${o.num}` + (o.status === 'divergente' ? ' — acima da tolerância, foi para o gestor' : ''));
-    persist();
+    fecharLocal(o); persist();
     return o.status;
   },
   async aceitarDivergencia(o){
     o.status = 'recebida'; o.divergenciaAceitaPor = ME.id;
-    const m = manut(o.manutencaoId); if (m) log(m, `Aceitou a diferença da NF na ${o.num}`); persist();
+    const m = manut(o.manutencaoId); if (m) log(m, `Aceitou a diferença da NF na ${o.num}`); fecharLocal(o); persist();
+  },
+  async confirmarEntrega(o, e){
+    o.entregueEm = now(); o.entreguePor = ME.id; o.entregaFoto = e.foto || null;
+    const m = manut(o.manutencaoId); log(m, `Confirmou a entrega da ${o.num}`); fecharLocal(o);
+    const cs = m.compras.filter(c => c.status !== 'cancelada');
+    if (!m.encerradaEm && cs.some(c => c.status === 'aprovada') && cs.every(c => c.status === 'aprovada' && ordem(c.ocId)?.entregueEm)) { m.encerradaEm = now(); log(m, 'Manutenção encerrada: tudo entregue'); }
+    persist();
+  },
+  async addCotacaoPosterior(o, q){
+    const c = compraDeOC(o); c.posteriores = c.posteriores || [];
+    c.posteriores.push({ ...q, id: uid(), por: ME.id, em: now() });
+    log(manut(o.manutencaoId), `Cotação posterior ${nomeF(q.fornecedorId)}: ${fmtR(q.valor)}`); fecharLocal(o); persist();
   },
   async revisarEmergencial(o){
     o.revisadaPor = ME.id; o.revisadaEm = now();
@@ -643,6 +706,11 @@ const apiLocal = {
   async redefinirSenha(){},
   async salvarConfig(c){ S.config = c; persist(); }
 };
+
+function fecharLocal(o){
+  const p = ocPend(o);
+  if (!o.fechadaEm && !p.entrega && !p.nf && !p.div && !p.post) { o.fechadaEm = now(); log(manut(o.manutencaoId), `${o.num} fechada`); }
+}
 
 /* ---------- Supabase ---------- */
 const fotoURL = {};          // caminho no Storage → link assinado
@@ -681,10 +749,11 @@ async function reload(){
     q(sb.from('cotacoes').select('*').order('em').limit(10000)),
     q(sb.from('ordens').select('*').order('aprovado_em', { ascending: false }).limit(5000))
   ]);
-  await assinar([...ms.flatMap(m => m.fotos || []), ...qs.map(x => x.anexo), ...os.map(o => o.nf_foto)]);
-  const cotPor = {}; qs.forEach(x => (cotPor[x.compra_id] ||= []).push({ id: x.id, fornecedorId: x.fornecedor_id, valor: num(x.valor), prazo: x.prazo, pagamento: x.pagamento, obs: x.obs, anexo: furl(x.anexo), por: x.por, em: x.em }));
+  await assinar([...ms.flatMap(m => m.fotos || []), ...qs.map(x => x.anexo), ...os.map(o => o.nf_foto), ...os.map(o => o.entrega_foto)]);
+  const cotPor = {}, posPor = {};
+  qs.forEach(x => ((x.posterior ? posPor : cotPor)[x.compra_id] ||= []).push({ id: x.id, fornecedorId: x.fornecedor_id, valor: num(x.valor), prazo: x.prazo, pagamento: x.pagamento, obs: x.obs, anexo: furl(x.anexo), por: x.por, em: x.em }));
   const compPor = {}; cs.forEach(c => (compPor[c.manutencao_id] ||= []).push({ id: c.id, descricao: c.descricao, tipo: c.tipo, status: c.status, escolhidaId: c.escolhida_id,
-    justificativa: c.justificativa, dispensa: c.dispensa, solicitadaEm: c.solicitada_em, solicitadaPor: c.solicitada_por, ocId: c.oc_id, motivoReprova: c.motivo_reprova, cotacoes: cotPor[c.id] || [] }));
+    justificativa: c.justificativa, dispensa: c.dispensa, solicitadaEm: c.solicitada_em, solicitadaPor: c.solicitada_por, ocId: c.oc_id, motivoReprova: c.motivo_reprova, cotacoes: cotPor[c.id] || [], posteriores: posPor[c.id] || [] }));
   S = {
     v: 1, exemplo: false,
     config: { alcada: { motorista: num(cfg.alcada_motorista), mecanico: num(cfg.alcada_mecanico), analista: num(cfg.alcada_analista) },
@@ -692,12 +761,13 @@ async function reload(){
       tetoEmergencial: num(cfg.teto_emergencial), prazoRegularizacaoH: cfg.prazo_regularizacao_h, toleranciaNF: num(cfg.tolerancia_nf) },
     users: p.map(u => ({ id: u.id, nome: u.nome || u.email, email: (u.email || '').endsWith(TEL_DOM) ? '' : u.email, telefone: u.telefone || '', perfil: u.perfil, placa: u.placa, ativo: u.ativo, alcada: u.alcada == null ? null : Number(u.alcada) })),
     veiculos: vs.map(v => ({ id: v.id, placa: v.placa, tipo: v.tipo, marca: v.marca, anoModelo: v.ano_modelo })),
-    fornecedores: fs.map(f => ({ id: f.id, nome: f.nome, cnpj: f.cnpj, cidade: f.cidade, telefone: f.telefone, categoria: f.categoria, provisorio: f.provisorio })),
+    fornecedores: fs.map(f => ({ id: f.id, nome: f.nome, cnpj: f.cnpj, cidade: f.cidade, telefone: f.telefone, whatsapp: f.whatsapp || '', categoria: f.categoria, provisorio: f.provisorio })),
     manutencoes: ms.map(m => ({ id: m.id, num: m.num, destino: m.destino, placa: m.placa, descricao: m.descricao, tipo: m.tipo, prioridade: m.prioridade, prioridadeConfirmada: m.prioridade_confirmada,
       abertoPor: m.aberto_por, abertoEm: m.aberto_em, atendidoPor: m.atendido_por, fotos: (m.fotos || []).map(furl).filter(Boolean), encerradaEm: m.encerrada_em, cancelada: m.cancelada,
       historico: histCache[m.id] || [], compras: compPor[m.id] || [] })),
     ordens: os.map(o => ({ id: o.id, num: o.num, manutencaoId: o.manutencao_id, compraId: o.compra_id, destino: o.destino, placa: o.placa, fornecedorId: o.fornecedor_id, valor: num(o.valor), tipo: o.tipo,
       emergencial: o.emergencial, aprovadoPor: o.aprovado_por, aprovadoEm: o.aprovado_em, regularizarAte: o.regularizar_ate, revisadaPor: o.revisada_por, status: o.status,
+      entregueEm: o.entregue_em, entreguePor: o.entregue_por, entregaFoto: furl(o.entrega_foto), fechadaEm: o.fechada_em,
       nf: o.nf_em ? { numero: o.nf_numero, valor: num(o.nf_valor), foto: furl(o.nf_foto), por: o.nf_por, em: o.nf_em } : null })),
     seq: {}
   };
@@ -720,6 +790,10 @@ async function adminUsuarios(body){
   if (data?.erro) throw new Error(data.erro);
   return data;
 }
+function notificarAprovacao(compraId){
+  if (!compraId) return;
+  try { sb.functions.invoke('notificar-aprovacao', { body: { compra_id: compraId } }).catch(() => {}); } catch (e) {}
+}
 const apiRemote = {
   async criarDemanda(d){
     const paths = [];
@@ -732,6 +806,7 @@ const apiRemote = {
   async compraEmergencial(m, e){
     const r = await rpc('compra_emergencial', { p_manut: m.id, p_descricao: e.descricao, p_tipo: m.tipo, p_fornecedor: e.fornecedorId, p_valor: e.valor, p_pagamento: e.pagamento, p_justificativa: e.justificativa });
     await reload(); if (V.id) await loadHist(m.id);
+    if (!r.ordem_id) notificarAprovacao(r.compra_id);
     return { oc: r.ordem_id ? ordem(r.ordem_id) : null };
   },
   definirPrioridade: (m, p) => run('definir_prioridade', { p_manut: m.id, p_prioridade: p }),
@@ -744,7 +819,15 @@ const apiRemote = {
   },
   removerCotacao: (m, c, qid) => run('remover_cotacao', { p_cotacao: qid }),
   escolher: (m, c, qid) => run('escolher_cotacao', { p_compra: c.id, p_cotacao: qid }),
-  enviarAprovacao: (m, c, j, d) => run('enviar_aprovacao', { p_compra: c.id, p_justificativa: j, p_dispensa: d }),
+  async enviarAprovacao(m, c, j, d){ await run('enviar_aprovacao', { p_compra: c.id, p_justificativa: j, p_dispensa: d }); notificarAprovacao(c.id); },
+  async confirmarEntrega(o, e){
+    const foto = e.foto ? await uploadFoto(e.foto, 'entregas') : null;
+    await run('confirmar_entrega', { p_ordem: o.id, p_foto: foto });
+  },
+  async addCotacaoPosterior(o, q){
+    const anexo = q.anexo ? await uploadFoto(q.anexo, 'cotacoes') : null;
+    await run('add_cotacao_posterior', { p_compra: o.compraId, p_fornecedor: q.fornecedorId, p_valor: q.valor, p_prazo: q.prazo, p_obs: q.obs, p_anexo: anexo });
+  },
   async aprovar(m, c, j, d){ const id = await rpc('aprovar', { p_compra: c.id, p_justificativa: j, p_dispensa: d }); await reload(); return ordem(id); },
   reprovar: (m, c, t) => run('reprovar', { p_compra: c.id, p_motivo: t }),
   cancelarCompra: (m, c) => run('cancelar_compra', { p_compra: c.id }),
@@ -793,7 +876,8 @@ async function entrarRemoto(u){
   ME = user(u.id);
   if (!ME || ME.ativo === false) { ME = null; await sb.auth.signOut(); loginErro = 'Seu acesso está desativado. Fale com o gestor.'; render(); return; }
   assinarTempoReal();
-  go('fila', null, { replace: true });
+  await checarPush();
+  go(location.hash === '#aprovar' && ME.perfil !== 'motorista' ? 'aprovar' : 'fila', null, { replace: true });
 }
 let loginErro = '';
 
@@ -945,18 +1029,21 @@ function viewLogin(){
 /* ---------- fila ---------- */
 function totais(){
   const d = new Date(), ini = new Date(d.getFullYear(), d.getMonth(), 1);
-  const mes = S.ordens.filter(o => o.status !== 'cancelada' && new Date(o.aprovadoEm) >= ini);
-  const gasto = mes.reduce((a, o) => a + (o.nf ? o.nf.valor : o.valor), 0);
+  const vivas = S.ordens.filter(o => o.status !== 'cancelada');
+  const mes = vivas.filter(o => new Date(o.aprovadoEm) >= ini);
+  const gasto = mes.reduce((a, o) => a + valorOC(o), 0);
   const porPlaca = {};
-  mes.forEach(o => { const k = alvoTxt(o); porPlaca[k] = (porPlaca[k] || 0) + (o.nf ? o.nf.valor : o.valor); });
+  mes.forEach(o => { const k = alvoTxt(o); porPlaca[k] = (porPlaca[k] || 0) + valorOC(o); });
   const placas = Object.entries(porPlaca).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const tempos = [];
   S.manutencoes.forEach(m => m.compras.forEach(c => { const o = ordem(c.ocId); if (o && !o.emergencial && c.solicitadaEm && new Date(o.aprovadoEm) >= ini) tempos.push((new Date(o.aprovadoEm) - new Date(c.solicitadaEm)) / 3600e3); }));
   const tm = tempos.length ? tempos.reduce((a, b) => a + b, 0) / tempos.length : null;
   let aguard = 0; S.manutencoes.forEach(m => m.compras.forEach(c => { if (c.status === 'aprovacao') aguard++; }));
-  return { gasto, nOC: mes.length, nPlacas: Object.keys(porPlaca).length, placas,
-    aguard, emerg: S.ordens.filter(o => o.emergencial && !o.nf && o.status !== 'cancelada').length,
+  const difs = mes.map(difEmerg).filter(x => x != null);
+  return { gasto, nOC: mes.length, nPlacas: Object.keys(porPlaca).filter(k => k !== 'Estoque').length, temEstoque: 'Estoque' in porPlaca, placas,
+    aguard, postPend: vivas.filter(o => ocPend(o).post).length, semNF: vivas.filter(o => !o.nf).length,
     pctEmerg: mes.length ? Math.round(100 * mes.filter(o => o.emergencial).length / mes.length) : 0,
+    difEmerg: difs.length ? difs.reduce((a, b) => a + b, 0) : null,
     tm, mesNome: d.toLocaleDateString('pt-BR', { month:'long' }) };
 }
 const fmtH = h => h == null ? '—' : h < 1 ? `${Math.max(1, Math.round(h * 60))} min` : `${h.toFixed(1).replace('.', ',')} h`;
@@ -966,7 +1053,7 @@ function viewFila(){
   const ativas = lista.filter(m => !['encerrada', 'cancelada'].includes(statusManut(m)));
   const placas = [...new Set(lista.map(alvoTxt))].sort((a, b) => a === 'Estoque' ? 1 : b === 'Estoque' ? -1 : a.localeCompare(b));
   const filtra = arr => arr.filter(m => (!V.placa || alvoTxt(m) === V.placa) &&
-    (!V.so || V.so === 'encerradas' || (V.so === 'minhas' ? (m.abertoPor === ME.id || m.atendidoPor === ME.id) : V.so === 'triagem' ? !m.prioridadeConfirmada : statusManut(m) === V.so)) &&
+    (!V.so || V.so === 'encerradas' || (V.so === 'minhas' ? (m.abertoPor === ME.id || m.atendidoPor === ME.id) : V.so === 'triagem' ? !m.prioridadeConfirmada : V.so === 'emergencial' ? temEmergencial(m) : statusManut(m) === V.so)) &&
     (!V.busca || (m.num + ' ' + alvoTxt(m) + ' ' + m.descricao).toLowerCase().includes(V.busca.toLowerCase())));
   const urg = filtra(ativas.filter(m => m.prioridade === 'urgente'));
   const prog = filtra(ativas.filter(m => m.prioridade === 'programada'));
@@ -974,11 +1061,11 @@ function viewFila(){
   const t = totais();
   const nTri = ativas.filter(m => !m.prioridadeConfirmada).length;
 
-  const row = m => { const s = statusManut(m); const nv = m.compras.filter(c => c.status !== 'cancelada').reduce((a, c) => a + (valorCompra(c) || 0), 0);
+  const row = m => { const s = statusManut(m); const nv = m.compras.filter(c => c.status !== 'cancelada').reduce((a, c) => { const o = ordem(c.ocId); return a + (o ? valorOC(o) : (valorCompra(c) || 0)); }, 0);
     return `<button class="qrow" data-go="demanda" data-id="${m.id}">
       <span class="muted num">${esc(m.num)}</span><span>${plateHtml(m)}</span>
-      <span style="font-weight:600;min-width:0">${esc(m.descricao)} ${!m.prioridadeConfirmada ? '<span class="tag-sug">sugerida</span>' : ''}</span>
-      <span class="muted">${esc(nomeU(m.abertoPor))}</span><span>${pillSt(s)}</span>
+      <span style="font-weight:600;min-width:0">${esc(m.descricao)} ${!m.prioridadeConfirmada ? '<span class="tag-sug">sugerida</span>' : ''}<span class="quem">${esc(nomeU(m.abertoPor))}</span></span>
+      <span>${pillSt(s)}</span>
       <span class="num" style="font-weight:700;text-align:right">${nv ? fmtR(nv) : '—'}</span><span class="muted" style="text-align:right">${rel(m.abertoEm)}</span></button>`; };
   const card = m => { const s = statusManut(m);
     return `<button class="qcard" data-go="demanda" data-id="${m.id}">
@@ -1012,7 +1099,7 @@ function viewFila(){
       </div>
       <div class="chips">
         <select class="chip m-only" id="placa-fila-m" aria-label="Placa"><option value="">Placas e estoque</option>${placas.map(p => `<option ${V.placa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>
-        ${[['', 'Todas'], ['minhas', 'Minhas'], ['aprovacao', 'Aguardando aprovação', cnt(m => statusManut(m) === 'aprovacao')], ['cotacao', 'Em cotação', cnt(m => statusManut(m) === 'cotacao')], ['emergencial', 'Emergenciais', cnt(m => statusManut(m) === 'emergencial')], ...(pode.prioridade(ME) && nTri ? [['triagem', 'Prioridade a confirmar', nTri]] : []), ['encerradas', 'Encerradas']]
+        ${[['', 'Todas'], ['minhas', 'Minhas'], ['aprovacao', 'Aguardando aprovação', cnt(m => statusManut(m) === 'aprovacao')], ['cotacao', 'Em cotação', cnt(m => statusManut(m) === 'cotacao')], ['emergencial', 'Emergenciais', cnt(temEmergencial)], ...(pode.prioridade(ME) && nTri ? [['triagem', 'Prioridade a confirmar', nTri]] : []), ['encerradas', 'Encerradas']]
           .map(([v, l, n]) => `<button class="chip" data-act="so" data-v="${v}" aria-pressed="${V.so === v}">${l}${n ? ' · ' + n : ''}</button>`).join('')}
       </div>
       ${V.so === 'encerradas' ? section('Encerradas', 'var(--line-2)', enc) : section('Urgentes', 'var(--orange)', urg) + section('Programadas', 'var(--primary)', prog)}
@@ -1020,13 +1107,14 @@ function viewFila(){
     </div>
     <aside class="panel" aria-label="Resumo do mês">
       <span class="small muted" style="font-weight:700;letter-spacing:1.2px;text-transform:uppercase">${t.mesNome}</span>
-      <div class="stat hero"><span class="l">Gasto aprovado no mês</span><span class="v">${fmtR(t.gasto)}</span><span class="l">${t.nOC} OC · ${t.nPlacas} placa(s)</span></div>
+      <div class="stat hero"><span class="l">Gasto aprovado no mês</span><span class="v">${fmtR(t.gasto)}</span><span class="l">${t.nOC} OC · ${t.nPlacas} placa(s)${t.temEstoque ? ' + estoque' : ''}</span></div>
       <div class="grid2">
         <div class="stat"><span class="l">Aguardando aprovação</span><span class="v" style="color:var(--warn)">${t.aguard}</span></div>
-        <div class="stat"><span class="l">Emergenciais a regularizar</span><span class="v" style="color:var(--bad)">${t.emerg}</span></div>
+        <div class="stat"><span class="l">OCs sem NF</span><span class="v">${t.semNF}</span></div>
+        <div class="stat"><span class="l">Cotação posterior pendente</span><span class="v" style="color:var(--bad)">${t.postPend}</span></div>
         <div class="stat"><span class="l">Tempo médio de aprovação</span><span class="v">${fmtH(t.tm)}</span></div>
-        <div class="stat"><span class="l">Compras emergenciais</span><span class="v">${t.pctEmerg}%</span></div>
       </div>
+      <div class="stat"><span class="l">Compras emergenciais no mês: ${t.pctEmerg}%</span><span class="v" style="font-size:18px;color:${t.difEmerg > 0 ? 'var(--bad)' : 'var(--ok)'}">${t.difEmerg == null ? '—' : (t.difEmerg > 0 ? 'Pagamos ' + fmtR(t.difEmerg) + ' a mais' : t.difEmerg < 0 ? 'Economia de ' + fmtR(-t.difEmerg) : 'Sem diferença')}</span><span class="l">comparado à cotação posterior</span></div>
       <div class="card pad stack">
         <span style="font-weight:800">Gasto por placa e estoque</span>
         ${t.placas.length ? t.placas.map(([p, v]) => `<div class="stack" style="gap:4px"><div class="row small" style="justify-content:space-between"><span style="font-weight:700">${esc(p)}</span><span class="num">${fmtR(v)}</span></div><span class="bar" style="width:${Math.max(4, 100 * v / t.placas[0][1])}%"></span></div>`).join('') : '<span class="small muted">Sem ordens neste mês.</span>'}
@@ -1060,8 +1148,6 @@ function viewNova(){
         <div class="photos">${photosHtml(d.fotos, true, 'draft')}
           <label class="addphoto">${ic('cam', 26)}<span>Adicionar</span><input type="file" accept="image/*" capture="environment" multiple id="d-fotos"></label></div>
         <span class="hint">As fotos são reduzidas automaticamente.</span></div>
-      <div class="field"><span class="lbl">Precisa de</span>
-        <div class="seg blue">${[['peca', 'Peça'], ['servico', 'Serviço'], ['ambos', 'Peça + serviço']].map(([v, l]) => `<button type="button" data-act="d-tipo" data-v="${v}" aria-pressed="${d.tipo === v}">${l}</button>`).join('')}</div></div>
       <div class="field"><span class="lbl">Prioridade</span>
         <div class="seg">${[['urgente', 'Urgente'], ['programada', 'Programada']].map(([v, l]) => `<button type="button" data-act="d-pri" data-v="${v}" aria-pressed="${d.prioridade === v}">${l}</button>`).join('')}</div>
         <span class="hint">${ME.perfil === 'gestor' ? 'Como gestor, a prioridade já fica confirmada.' : 'Você sugere; o gestor confirma ou muda na fila.'}</span></div>
@@ -1084,13 +1170,13 @@ function viewDemanda(){
   const m = manut(V.id);
   if (!m) return `<div class="content"><div class="card empty">Demanda não encontrada. <button class="btn sm" data-go="fila">Voltar à fila</button></div></div>`;
   const s = statusManut(m), si = stepIndex(s);
-  const lbls = ['Aberta', 'Cotação', 'Aprovação', 'Execução', 'Encerrada'];
+  const lbls = ['Aberta', 'Cotação', 'Aprovação', 'Entrega', 'Encerrada'];
   const steps = lbls.map((_, i) => `<span class="${i < si || si === 5 ? 'done' : i === si ? 'now' : ''}"></span>`).join('');
   const stepl = lbls.map((l, i) => `<span class="${i === si && si < 5 ? 'now' : ''}">${l}</span>`).join('');
   const ativa = !['encerrada', 'cancelada'].includes(s);
   const compras = m.compras.filter(c => c.status !== 'cancelada');
-  const podeEncerrar = pode.encerrar(ME) && ativa && compras.length > 0 && compras.every(c => c.status === 'aprovada' && ordem(c.ocId)?.nf && ordem(c.ocId)?.status !== 'divergente');
-  const tipoTxt = { peca:'Peça', servico:'Serviço', ambos:'Peça + serviço' }[m.tipo];
+  const tudoEntregue = compras.length > 0 && compras.every(c => c.status === 'aprovada' && ordem(c.ocId)?.entregueEm);
+  const podeEncerrar = pode.encerrar(ME) && ativa && tudoEntregue;
   let bar = '';
   const comprasHtml = compras.map(c => {
     barHtml = '';
@@ -1124,11 +1210,10 @@ function viewDemanda(){
       <div class="b">
         ${compras.length ? `<div class="row" style="justify-content:space-between"><h2 style="font-size:18px;font-weight:800;color:var(--heading)">Compras e cotações</h2></div>${comprasHtml}` : `<div class="card pad stack">
           <h2>Cotações</h2>
-          <p class="muted" style="margin:0">Nenhuma cotação lançada. ${pode.cotar(ME) ? 'Lance a primeira para começar.' : 'O mecânico ou o analista vai cotar. Se não dá para esperar, use a compra emergencial.'}</p>
-          ${ativa ? `<div class="row hide-m">${pode.cotar(ME) ? `<button class="btn primary" data-act="cotar-nova">${ic('plus', 18)} Lançar cotação</button>` : ''}<button class="btn danger" data-act="emerg">Compra emergencial</button></div>` : ''}
-          ${ativa ? `<span class="small muted">Compra emergencial: para quando não dá para esperar cotação. O número da OC sai na hora, até ${fmtR(S.config.tetoEmergencial)}.</span>` : ''}</div>`}
+          <p class="muted" style="margin:0">${pode.cotar(ME) ? 'Lance a primeira cotação.' : 'O mecânico ou o analista vai cotar.'} Se não dá para esperar, use a compra emergencial: a OC sai na hora, até ${fmtR(S.config.tetoEmergencial)}.</p>
+          ${ativa ? `<div class="row hide-m">${pode.cotar(ME) ? `<button class="btn primary" data-act="cotar-nova">${ic('plus', 18)} Lançar cotação</button>` : ''}<button class="btn danger" data-act="emerg">Compra emergencial</button></div>` : ''}</div>`}
         ${compras.length && ativa ? `<div class="row">${pode.cotar(ME) ? `<button class="btn" data-act="nova-compra">${ic('plus', 18)} Outra compra nesta manutenção</button>` : ''}<button class="btn danger" data-act="emerg">Compra emergencial</button></div>` : ''}
-        ${podeEncerrar ? `<div class="notice ok"><b>Tudo recebido.</b><span>Todas as OCs têm NF registrada.</span><button class="btn primary hide-m" data-act="encerrar" style="align-self:flex-start;margin-top:6px">Encerrar manutenção</button></div>` : ''}
+        ${podeEncerrar ? `<div class="notice ok"><b>Tudo entregue.</b><span>Pode encerrar a manutenção. As NFs seguem sendo acompanhadas nas Ordens de compra.</span><button class="btn primary hide-m" data-act="encerrar" style="align-self:flex-start;margin-top:6px">Encerrar manutenção</button></div>` : ''}
         ${s === 'encerrada' && pode.encerrar(ME) ? `<button class="btn" data-act="reabrir" style="align-self:flex-start">Reabrir manutenção</button>` : ''}
       </div>
       <div class="a">
@@ -1136,12 +1221,12 @@ function viewDemanda(){
           <h2>Demanda</h2>
           <dl class="kv" style="margin:0">
             <dt>Aberta por</dt><dd>${esc(nomeU(m.abertoPor))} · ${fmtDT(m.abertoEm)}</dd>
-            <dt>Atendimento</dt><dd>${m.atendidoPor ? esc(nomeU(m.atendidoPor)) : '<span class="muted">ninguém ainda</span>'}</dd>
-            <dt>Precisa de</dt><dd>${tipoTxt}</dd>
+            ${ehEstoque(m) ? '' : `<dt>Atendimento</dt><dd>${m.atendidoPor ? esc(nomeU(m.atendidoPor)) : '<span class="muted">ninguém ainda</span>'}</dd>`}
             <dt>Fotos</dt><dd>${m.fotos.length || 'nenhuma'}</dd>
           </dl>
           <div class="row">
-            ${ativa && pode.cotar(ME) && m.atendidoPor !== ME.id ? `<button class="btn sm" data-act="atender">Assumir atendimento</button>` : ''}
+            ${ativa && pode.cotar(ME) && m.atendidoPor !== ME.id && !ehEstoque(m) ? `<button class="btn sm" data-act="atender">Assumir atendimento</button>` : ''}
+            ${ativa && pode.encerrar(ME) && compras.length === 0 ? `<button class="btn sm" data-act="encerrar">Encerrar sem compra</button>` : ''}
             <button class="btn sm" data-act="comentar">Comentar</button>
             ${ativa && pode.cancelar(ME) ? `<button class="btn sm danger" data-act="cancelar-manut">Cancelar demanda</button>` : ''}
           </div>
@@ -1213,15 +1298,30 @@ function compraHtml(m, c){
       <div class="notice warn"><b>Alçada exigida: ${quemAprova(v)}</b><span>Enviada por ${esc(nomeU(c.solicitadaPor))} ${rel(c.solicitadaEm)}.${c.dispensa ? ' Dispensa de cotação: ' + esc(c.dispensa) + '.' : ''}${c.justificativa ? ' Justificativa: ' + esc(c.justificativa) + '.' : ''}</span>${alcChips}</div></div>
       ${eu ? `<div class="actions pri-act"><span style="flex:1"></span>${btns}</div>` : ''}`;
   } else if (c.status === 'aprovada' && o) {
-    const b = `<button class="btn ${o.nf ? '' : 'primary'}" data-go="oc" data-id="${o.id}">${o.nf ? 'Ver OC' : 'Abrir OC e registrar NF'}</button>`;
-    if (!o.nf) barHtml = b;
-    rodape = `<div class="actions"><span class="small muted" style="align-self:center">Aprovada por ${esc(nomeU(o.aprovadoPor))} · ${fmtDT(o.aprovadoEm)}</span><span style="flex:1"></span><span class="${o.nf ? '' : 'pri-act'}">${b}</span></div>`;
+    const p = ocPend(o);
+    const chips = [p.entrega ? '<span class="pill info">Aguardando entrega</span>' : '<span class="pill ok">Entregue</span>',
+      p.div ? '<span class="pill bad">NF divergente</span>' : p.nf ? '<span class="pill warn">Sem NF</span>' : '<span class="pill ok">NF registrada</span>',
+      o.emergencial ? (p.post ? `<span class="pill warn">Cotação posterior ${p.np}/${postNec(o.valor)}</span>` : '<span class="pill ok">Cotação posterior ok</span>') : ''].join('');
+    const entregaBtn = p.entrega ? `<button class="btn primary" data-act="entrega" data-o="${o.id}">Confirmar entrega</button>` : '';
+    if (p.entrega) barHtml = `<button class="btn" data-go="oc" data-id="${o.id}">Ver OC</button>` + entregaBtn;
+    rodape = `${o.emergencial ? posteriorHtml(c, o) : ''}<div class="row" style="padding:12px 16px 0;gap:6px">${chips}</div>
+      <div class="actions"><span class="small muted" style="align-self:center">${o.emergencial ? 'Compra emergencial' : 'Aprovada'} por ${esc(nomeU(o.aprovadoPor))} · ${fmtDT(o.aprovadoEm)}</span><span style="flex:1"></span>
+      <button class="btn" data-go="oc" data-id="${o.id}">Ver OC</button><span class="pri-act">${entregaBtn}</span></div>`;
   }
   return `<section class="compra">
     <div class="ch"><h3>${esc(c.descricao)}</h3>${stPill}<span style="margin-left:auto" class="num"><b>${v != null ? fmtR(v) : ''}</b></span></div>
     ${c.cotacoes.length ? cots : '<div class="empty small">Sem cotações ainda.</div>'}
     ${rodape}
   </section>`;
+}
+function posteriorHtml(c, o){
+  const ps = posteriores(c), nec = postNec(o.valor), d = difEmerg(o);
+  return `<div class="post">
+    <div class="row" style="justify-content:space-between"><b>Cotação posterior</b><span class="small muted">${ps.length} de ${nec} · para medir se pagamos caro</span></div>
+    ${ps.map(x => `<div class="row small" style="justify-content:space-between"><span>${esc(nomeF(x.fornecedorId))}${x.prazo ? ' · ' + esc(x.prazo) : ''}</span><span class="num" style="font-weight:700">${fmtR(x.valor)}</span></div>`).join('')}
+    ${d != null ? `<div class="notice ${d > 0 ? 'warn' : 'ok'}"><span>${d > 0 ? `Pagamos <b>${fmtR(d)}</b> a mais que a menor cotação posterior.` : d < 0 ? `Pagamos <b>${fmtR(-d)}</b> a menos que a menor cotação posterior.` : 'Pagamos o mesmo valor da menor cotação posterior.'}</span></div>` : ''}
+    ${pode.cotar(ME) && !o.fechadaEm ? `<button class="btn sm" data-act="posterior" data-o="${o.id}" style="align-self:flex-start">${ic('plus', 16)} Cotação posterior</button>` : ''}
+  </div>`;
 }
 function faixaDe(v){ for (const f of S.config.faixas) if (f.ate == null || v <= f.ate) return f.ate; return null; }
 function quemAprova(v){
@@ -1234,59 +1334,80 @@ function quemAprova(v){
 /* ---------- aprovações ---------- */
 function viewAprovar(){
   const pend = pendentesAprovacao(ME);
-  const emerg = pode.revisar(ME) ? emergPendentes() : [];
   const div = pode.revisar(ME) ? divergentes() : [];
   const item = ({ m, c }) => { const v = valorCompra(c), q = escolhida(c);
     return `<div class="compra">
       <div class="ch">${plateHtml(m)}<span class="muted num">${esc(m.num)}</span>${pillPri(m)}<span style="margin-left:auto;font-size:18px" class="num"><b>${fmtR(v)}</b></span></div>
       <div style="padding:12px 16px" class="stack">
         <span style="font-weight:700;font-size:16px">${esc(c.descricao)}</span>
-        <span class="small muted">${esc(nomeF(q?.fornecedorId))} · ${c.cotacoes.length} cotação(ões)${c.cotacoes.length > 1 && menorCot(c).id !== c.escolhidaId ? ' · <b style="color:var(--warn)">não é a menor</b>' : ''} · enviada ${rel(c.solicitadaEm)} por ${esc(nomeU(c.solicitadaPor))}</span>
+        <span class="small muted">${esc(nomeF(q?.fornecedorId))} · ${c.cotacoes.length} cotação(ões) · enviada ${rel(c.solicitadaEm)} por ${esc(nomeU(c.solicitadaPor))}</span>
+        ${c.cotacoes.length > 1 && menorCot(c).id !== c.escolhidaId ? `<span class="small" style="color:var(--warn);font-weight:700">+${fmtR(v - menorCot(c).valor)} sobre a menor (${esc(nomeF(menorCot(c).fornecedorId))}, ${fmtR(menorCot(c).valor)})</span>` : ''}
         ${c.justificativa || c.dispensa ? `<span class="small">${c.dispensa ? 'Dispensa: ' + esc(c.dispensa) + '. ' : ''}${c.justificativa ? 'Justificativa: ' + esc(c.justificativa) : ''}</span>` : ''}
       </div>
       <div class="actions"><button class="btn sm" data-go="demanda" data-id="${m.id}">Ver detalhes</button><span style="flex:1"></span>
         <button class="btn danger" data-act="reprovar" data-m="${m.id}" data-c="${c.id}">Reprovar</button>
         <button class="btn primary" data-act="aprovar-direto" data-m="${m.id}" data-c="${c.id}">Aprovar</button></div></div>`; };
-  const em = o => { const venc = o.regularizarAte && new Date(o.regularizarAte) < new Date();
-    return `<div class="compra"><div class="ch"><b class="num">${esc(o.num)}</b>${plateHtml(o)}
-      ${o.nf ? '<span class="pill ok">NF anexada</span>' : venc ? '<span class="pill bad">Prazo vencido</span>' : `<span class="pill warn">NF até ${fmtDT(o.regularizarAte)}</span>`}<span style="margin-left:auto" class="num"><b>${fmtR(o.nf?.valor ?? o.valor)}</b></span></div>
-      <div style="padding:12px 16px" class="small muted">${esc(nomeF(o.fornecedorId))} · comprada por ${esc(nomeU(o.aprovadoPor))} ${rel(o.aprovadoEm)} · ${esc(escolhidaJust(o))}</div>
-      <div class="actions"><button class="btn sm" data-go="oc" data-id="${o.id}">Abrir OC</button><span style="flex:1"></span>${o.nf ? `<button class="btn primary" data-act="revisar" data-o="${o.id}">Marcar como revisada</button>` : ''}</div></div>`; };
   const dv = o => `<div class="compra"><div class="ch"><b class="num">${esc(o.num)}</b>${plateHtml(o)}<span class="pill bad">NF divergente</span></div>
       <div style="padding:12px 16px" class="small">Aprovado ${fmtR(o.valor)} · NF ${fmtR(o.nf.valor)} (<b>+${(100 * (o.nf.valor / o.valor - 1)).toFixed(1).replace('.', ',')}%</b>) · ${esc(nomeF(o.fornecedorId))}</div>
       <div class="actions"><button class="btn sm" data-go="oc" data-id="${o.id}">Abrir OC</button><span style="flex:1"></span><button class="btn primary" data-act="aceitar-div" data-o="${o.id}">Aceitar diferença</button></div></div>`;
   return `<div class="content" style="max-width:860px">
     <div class="page-h"><h1>Aprovações</h1><span class="sub">Sua alçada: ${alcada(ME) === Infinity ? 'sem limite' : fmtR(alcada(ME))}</span></div>
+    ${pushCard()}
     <h2 style="font-size:18px">Compras aguardando você · ${pend.length}</h2>
     ${pend.length ? pend.map(item).join('') : '<div class="card empty">Nenhuma compra esperando sua aprovação.</div>'}
-    ${pode.revisar(ME) ? `<h2 style="font-size:18px;margin-top:8px">Emergenciais para revisar · ${emerg.length}</h2>
-      ${emerg.length ? emerg.map(em).join('') : '<div class="card empty">Nenhuma compra emergencial pendente.</div>'}
-      ${div.length ? `<h2 style="font-size:18px;margin-top:8px">NF acima da tolerância · ${div.length}</h2>${div.map(dv).join('')}` : ''}` : ''}
+    ${pode.revisar(ME) ? `${div.length ? `<h2 style="font-size:18px;margin-top:8px">NF acima da tolerância · ${div.length}</h2>${div.map(dv).join('')}` : ''}` : ''}
   </div>`;
 }
 function escolhidaJust(o){ const m = manut(o.manutencaoId); const c = m?.compras.find(x => x.id === o.compraId); return c?.justificativa || ''; }
 
 /* ---------- ordens ---------- */
-const stOC = o => o.status === 'cancelada' ? '<span class="pill neutral">Cancelada</span>' : o.status === 'divergente' ? '<span class="pill bad">NF divergente</span>' : o.nf ? '<span class="pill ok">Recebida</span>' : o.emergencial ? '<span class="pill bad">Emergencial · sem NF</span>' : '<span class="pill info">Aguardando NF</span>';
+function stOCtxt(o){
+  if (o.status === 'cancelada') return ['Cancelada', 'neutral'];
+  if (o.fechadaEm) return ['Fechada', 'ok'];
+  const p = ocPend(o);
+  if (p.entrega) return ['Aguardando entrega', 'info'];
+  if (p.div) return ['NF divergente', 'bad'];
+  if (p.nf) return ['Sem NF', 'warn'];
+  if (p.post) return ['Falta cotação posterior', 'warn'];
+  return ['Em dia', 'ok'];
+}
+const stOC = o => { const [t, k] = stOCtxt(o); return `<span class="pill ${k}">${t}</span>`; };
 function visOrdens(){ if (ME.perfil !== 'motorista') return S.ordens; const ids = new Set(visiveis(ME).map(m => m.id)); return S.ordens.filter(o => ids.has(o.manutencaoId)); }
+const FILTROS_OC = [
+  ['', 'Abertas', o => o.status !== 'cancelada' && !o.fechadaEm],
+  ['entrega', 'Aguardando entrega', o => o.status !== 'cancelada' && ocPend(o).entrega],
+  ['nf', 'Sem NF', o => o.status !== 'cancelada' && ocPend(o).nf],
+  ['post', 'Cotação posterior', o => o.status !== 'cancelada' && ocPend(o).post],
+  ['div', 'NF divergente', o => o.status === 'divergente'],
+  ['fechadas', 'Fechadas', o => !!o.fechadaEm],
+  ['todas', 'Todas', () => true]
+];
 function viewOrdens(){
   const b = V.ocBusca.toLowerCase();
-  const lista = visOrdens().filter(o => !b || (o.num + ' ' + alvoTxt(o) + ' ' + nomeF(o.fornecedorId) + ' ' + (o.nf?.numero || '')).toLowerCase().includes(b));
+  const base = visOrdens();
+  const f = (FILTROS_OC.find(x => x[0] === (V.ocF || '')) || FILTROS_OC[0])[2];
+  const lista = base.filter(f).filter(o => !b || (o.num + ' ' + alvoTxt(o) + ' ' + nomeF(o.fornecedorId) + ' ' + (o.nf?.numero || '')).toLowerCase().includes(b));
   return `<div class="content" style="max-width:1000px">
     <div class="page-h"><h1>Ordens de compra</h1><div class="right">${ME.perfil !== 'motorista' ? `<button class="btn sm" data-act="csv">Exportar planilha (CSV)</button>` : ''}</div></div>
     <input class="input" id="busca-oc" placeholder="Buscar nº da OC, placa, fornecedor ou NF" value="${esc(V.ocBusca)}" aria-label="Buscar ordens">
+    <div class="chips">${FILTROS_OC.map(([v, l, fn]) => { const n = base.filter(fn).length; return `<button class="chip" data-act="oc-f" data-v="${v}" aria-pressed="${(V.ocF || '') === v}">${l}${v !== 'todas' && v !== 'fechadas' && n ? ' · ' + n : ''}</button>`; }).join('')}</div>
     <div class="card" style="overflow:hidden"><div class="olist">
       ${lista.length ? lista.map(o => `<button class="orow" data-go="oc" data-id="${o.id}">
         <b class="num">${esc(o.num)}</b><span class="hm">${plateHtml(o)}</span><span class="hm" style="min-width:0">${esc(nomeF(o.fornecedorId))}</span>
-        <span class="num" style="font-weight:700;text-align:right">${fmtR(o.nf?.valor ?? o.valor)}</span><span style="text-align:right">${stOC(o)}</span>
-      </button>`).join('') : '<div class="empty">Nenhuma ordem encontrada.</div>'}
+        <span class="num" style="font-weight:700;text-align:right">${fmtR(valorOC(o))}</span><span style="text-align:right">${stOC(o)}</span>
+      </button>`).join('') : '<div class="empty">Nenhuma ordem neste filtro.</div>'}
     </div></div>
   </div>`;
 }
-function waLink(o){
+function waNumero(o){
   const f = forn(o.fornecedorId);
-  let tel = String(f?.telefone || '').replace(/\D/g, '');
-  if (tel && tel.length <= 11) tel = '55' + tel;
+  let tel = String(f?.whatsapp || '').replace(/\D/g, '');
+  if (!tel) { const t = String(f?.telefone || '').replace(/\D/g, ''); if (t.length === 11 || (t.length === 13 && t.startsWith('55'))) tel = t; }
+  if (!tel) return null;
+  return tel.length <= 11 ? '55' + tel : tel;
+}
+function waLink(o){
+  const tel = waNumero(o); if (!tel) return null;
   const m = manut(o.manutencaoId);
   const msg = `Barreto Transportes — Ordem de compra ${o.num}\n${ehEstoque(o) ? 'Destino: estoque' : 'Placa: ' + o.placa}\n${m ? 'Serviço/peça: ' + (m.compras.find(c => c.id === o.compraId)?.descricao || m.descricao) + '\n' : ''}Valor aprovado: ${fmtR(o.valor)}\nPor favor, informe o número ${o.num} na nota fiscal.`;
   return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
@@ -1294,31 +1415,41 @@ function waLink(o){
 function viewOC(){
   const o = ordem(V.id);
   if (!o) return `<div class="content"><div class="card empty">Ordem não encontrada.</div></div>`;
-  const m = manut(o.manutencaoId); const c = m?.compras.find(x => x.id === o.compraId);
-  const venc = o.emergencial && !o.nf && o.regularizarAte && new Date(o.regularizarAte) < new Date();
+  const m = manut(o.manutencaoId); const c = compraDeOC(o);
   const f = forn(o.fornecedorId);
+  const p = ocPend(o);
   const hora = new Date(o.aprovadoEm).toDateString() === new Date().toDateString() ? new Date(o.aprovadoEm).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' }) : fmtDT(o.aprovadoEm);
+  const wa = waLink(o);
+  const okI = `<span class="ok-i">${ic('check', 16, 3)}</span>`, pendI = `<span class="pend-i"></span>`;
+  const viva = o.status !== 'cancelada';
+  const d = difEmerg(o);
   return `<div class="content" style="max-width:600px;gap:18px">
     <div class="subbar light"><button class="hbtn" data-go="ordens" aria-label="Fechar">${ic('x', 22, 2.2)}</button><h1>Ordem de compra</h1><span class="sb-hint">${stOC(o)}</span></div>
     <div class="ocok"><span class="okc">${o.emergencial ? ic('truck', 32, 2.2) : ic('check', 34, 2.6)}</span><span>${o.emergencial ? 'Compra emergencial' : 'Aprovada'} por ${esc(nomeU(o.aprovadoPor))} · ${hora}</span></div>
     <div class="ocbig"><span class="l">INFORME ESTE NÚMERO AO FORNECEDOR</span><span class="n" id="oc-num">${esc(o.num)}</span><span class="small" style="color:var(--on-bar-2)">Peça para constar na nota fiscal ou no recibo</span></div>
-    ${o.emergencial && !o.nf ? `<div class="notice ${venc ? 'bad' : 'warn'}"><b>Compra emergencial${venc ? ' — prazo vencido' : ''}</b><span>Anexe a NF e a foto até ${fmtDT(o.regularizarAte)}.</span></div>` : ''}
+    <div class="stack">
+      ${wa ? `<a class="btn orange block" href="${wa}" target="_blank" rel="noopener">Enviar ao fornecedor pelo WhatsApp</a>` : `<span class="small muted">${pode.cadastros(ME) ? 'Cadastre o WhatsApp do fornecedor para enviar a OC por lá.' : 'Fornecedor sem WhatsApp cadastrado.'}</span>`}
+      <button class="btn block" data-act="copiar" data-v="${esc(o.num)}" style="height:50px">${ic('copy', 18)} Copiar número</button>
+    </div>
+    <div class="card">
+      <div class="etapa">${p.entrega ? pendI : okI}<b>Entrega</b>
+        ${p.entrega ? (viva ? `<button class="btn sm primary" data-act="entrega" data-o="${o.id}">Confirmar</button>` : '') : '<span></span>'}
+        <span class="sub">${p.entrega ? 'A peça chegou ou o serviço foi feito? Confirme para encerrar a manutenção.' : `${esc(nomeU(o.entreguePor))} · ${fmtDT(o.entregueEm)}`}</span></div>
+      <div class="etapa">${p.div ? '<span class="bad-i">!</span>' : p.nf ? pendI : okI}<b>Nota fiscal</b>
+        ${p.nf && viva ? `<button class="btn sm" data-act="nf" data-o="${o.id}">Registrar NF</button>` : p.div && pode.revisar(ME) ? `<button class="btn sm primary" data-act="aceitar-div" data-o="${o.id}">Aceitar diferença</button>` : '<span></span>'}
+        <span class="sub">${p.nf ? 'Ainda não chegou. O financeiro registra quando receber.' : `NF ${esc(o.nf.numero || 's/ nº')} · ${fmtR(o.nf.valor)}${p.div ? ` · <b style="color:var(--bad)">${(100 * (o.nf.valor / o.valor - 1)).toFixed(1).replace('.', ',')}% acima do aprovado</b>` : ''} · ${esc(nomeU(o.nf.por))}`}</span></div>
+      ${o.emergencial ? `<div class="etapa">${p.post ? pendI : okI}<b>Cotação posterior</b>
+        ${pode.cotar(ME) && viva && !o.fechadaEm ? `<button class="btn sm" data-act="posterior" data-o="${o.id}">Lançar</button>` : '<span></span>'}
+        <span class="sub">${p.np} de ${postNec(o.valor)} cotação(ões) de referência${p.post && o.regularizarAte ? ` · prazo ${fmtDT(o.regularizarAte)}` : ''}${d != null ? ` · ${d > 0 ? `pagamos <b style="color:var(--bad)">${fmtR(d)} a mais</b>` : d < 0 ? `pagamos <b style="color:var(--ok)">${fmtR(-d)} a menos</b>` : 'mesmo valor'}` : ''}</span></div>` : ''}
+    </div>
     <div class="card lines">
       <div class="ln"><span>Fornecedor</span><b>${esc(nomeF(o.fornecedorId))}</b></div>
-      ${f?.telefone ? `<div class="ln"><span>Telefone</span><b>${esc(f.telefone)}</b></div>` : ''}
+      ${f?.whatsapp || f?.telefone ? `<div class="ln"><span>${f.whatsapp ? 'WhatsApp' : 'Telefone'}</span><b>${esc(f.whatsapp || f.telefone)}</b></div>` : ''}
       <div class="ln"><span>${ehEstoque(o) ? 'Destino' : 'Placa'}</span><b>${ehEstoque(o) ? 'Estoque' : esc(o.placa)}</b></div>
       <div class="ln"><span>Manutenção</span><b>${m ? `<a href="#" data-go="demanda" data-id="${m.id}">${esc(m.num)}</a> · ${esc(c?.descricao || m.descricao)}` : '—'}</b></div>
       <div class="ln"><span>Valor aprovado</span><b class="num" style="font-weight:800">${fmtR(o.valor)}</b></div>
-      ${o.nf ? `<div class="ln"><span>NF</span><b>${esc(o.nf.numero || 's/ nº')} · <span class="num">${fmtR(o.nf.valor)}</span></b></div><div class="ln"><span>Recebida por</span><b>${esc(nomeU(o.nf.por))} · ${fmtDT(o.nf.em)}</b></div>` : ''}
     </div>
-    ${o.nf?.foto ? `<div class="photos">${photosHtml([o.nf.foto], false, 'nf:' + o.id)}</div>` : ''}
-    <div class="stack">
-      <a class="btn orange block" href="${waLink(o)}" target="_blank" rel="noopener">Enviar ao fornecedor pelo WhatsApp</a>
-      <button class="btn block" data-act="copiar" data-v="${esc(o.num)}" style="height:50px">${ic('copy', 18)} Copiar número</button>
-      ${!o.nf && o.status !== 'cancelada' ? `<button class="btn primary block" data-act="nf" data-o="${o.id}">Registrar recebimento (NF)</button>` : ''}
-      ${o.status === 'divergente' && pode.revisar(ME) ? `<button class="btn primary block" data-act="aceitar-div" data-o="${o.id}">Aceitar diferença da NF</button>` : ''}
-    </div>
-    ${!o.nf ? `<div class="row small muted" style="flex-wrap:nowrap;align-items:flex-start">${ic('info', 18)}<span>Próximo passo: quem receber a peça ou o serviço registra a NF com foto aqui. NF acima de ${String(S.config.toleranciaNF).replace('.', ',')}% do aprovado volta para o gestor.</span></div>` : ''}
+    ${o.nf?.foto || o.entregaFoto ? `<div class="photos">${o.entregaFoto ? photosHtml([o.entregaFoto], false, 'en:' + o.id) : ''}${o.nf?.foto ? photosHtml([o.nf.foto], false, 'nf:' + o.id) : ''}</div>` : ''}
   </div>`;
 }
 
@@ -1330,6 +1461,7 @@ function viewMais(){
     <div class="card pad row" style="flex-wrap:nowrap"><span class="av">${esc(initials(ME.nome))}</span><div style="min-width:0"><div style="font-weight:800;font-size:17px">${esc(ME.nome)}</div><div class="small muted">${PERFIS[ME.perfil]}${ME.perfil !== 'gestor' ? ' · alçada ' + (alcada(ME) ? fmtR(alcada(ME)) : 'só emergencial') : ''}</div></div></div>
     ${ME.perfil !== 'motorista' ? `<div class="grid2"><div class="stat hero" style="grid-column:1/3"><span class="l">Gasto aprovado em ${t.mesNome}</span><span class="v">${fmtR(t.gasto)}</span></div>
       <div class="stat"><span class="l">Tempo médio de aprovação</span><span class="v">${fmtH(t.tm)}</span></div><div class="stat"><span class="l">Compras emergenciais</span><span class="v">${t.pctEmerg}%</span></div></div>` : ''}
+    ${pushCard()}
     <div class="card pad stack" style="gap:2px">
       ${li('nova', 'plus', 'Nova demanda')}
       ${pode.cadastros(ME) ? li('cadastros', 'store', 'Cadastros: fornecedores, veículos, usuários') : ''}
@@ -1344,8 +1476,8 @@ function viewCadastros(){
   const tabs = [['fornecedores', 'Fornecedores'], ['veiculos', 'Veículos'], ...(pode.config(ME) ? [['usuarios', 'Usuários']] : [])];
   let body = '';
   if (V.cad === 'fornecedores') body = `<div class="row"><button class="btn primary" data-act="forn-edit">${ic('plus', 18)} Fornecedor</button></div>
-    <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Nome</th><th>Categoria</th><th>Cidade</th><th>Telefone</th><th>CNPJ</th><th></th></tr></thead><tbody>
-    ${S.fornecedores.map(f => `<tr><td><b>${esc(f.nome)}</b> ${f.provisorio ? '<span class="tag-sug">completar cadastro</span>' : ''}</td><td>${esc(f.categoria)}</td><td>${esc(f.cidade)}</td><td>${esc(f.telefone)}</td><td>${esc(f.cnpj)}</td><td><button class="btn sm" data-act="forn-edit" data-id="${f.id}">Editar</button></td></tr>`).join('')}
+    <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Nome</th><th>Categoria</th><th>Cidade</th><th>WhatsApp</th><th>Telefone</th><th>CNPJ</th><th></th></tr></thead><tbody>
+    ${S.fornecedores.map(f => `<tr><td><b>${esc(f.nome)}</b> ${f.provisorio ? '<span class="tag-sug">completar cadastro</span>' : ''}</td><td>${esc(f.categoria)}</td><td>${esc(f.cidade)}</td><td>${esc(f.whatsapp || '')}</td><td>${esc(f.telefone)}</td><td>${esc(f.cnpj)}</td><td><button class="btn sm" data-act="forn-edit" data-id="${f.id}">Editar</button></td></tr>`).join('')}
     </tbody></table></div>`;
   if (V.cad === 'veiculos') body = `<div class="row"><button class="btn primary" data-act="veic-edit">${ic('plus', 18)} Veículo</button></div>
     <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Placa</th><th>Tipo</th><th>Marca / modelo</th><th>Ano/modelo</th><th></th></tr></thead><tbody>
@@ -1376,10 +1508,10 @@ function viewConfig(){
           <div class="field"><label for="cf-f1">1 cotação até (R$)</label><input class="input num" id="cf-f1" inputmode="decimal" value="${vr(c.faixas[0].ate)}"></div>
           <div class="field"><label for="cf-f2">2 cotações até (R$)</label><input class="input num" id="cf-f2" inputmode="decimal" value="${vr(c.faixas[1].ate)}"></div>
         </div><span class="hint">Acima do segundo valor, 3 cotações. Analista e gestor podem dispensar com justificativa.</span></div>
-      <div class="card pad stack"><h2>Compra emergencial e recebimento</h2>
+      <div class="card pad stack"><h2>Compra emergencial e NF</h2>
         <div class="fgrid">
-          <div class="field"><label for="cf-teto">Teto emergencial (R$)</label><input class="input num" id="cf-teto" inputmode="decimal" value="${vr(c.tetoEmergencial)}"><span class="hint">Acima disso, vai ao gestor como urgente.</span></div>
-          <div class="field"><label for="cf-prazo">Prazo para anexar NF (horas)</label><input class="input num" id="cf-prazo" inputmode="numeric" value="${c.prazoRegularizacaoH}"></div>
+          <div class="field"><label for="cf-teto">Teto emergencial (R$)</label><input class="input num" id="cf-teto" inputmode="decimal" value="${vr(c.tetoEmergencial)}"><span class="hint">Até esse valor, compra sem cotação libera a OC na hora. Acima, vai ao gestor.</span></div>
+          <div class="field"><label for="cf-prazo">Prazo para a cotação posterior (horas)</label><input class="input num" id="cf-prazo" inputmode="numeric" value="${c.prazoRegularizacaoH}"></div>
           <div class="field"><label for="cf-tol">Tolerância da NF sobre o aprovado (%)</label><input class="input num" id="cf-tol" inputmode="decimal" value="${vr(c.toleranciaNF)}"><span class="hint">NF acima disso volta para o gestor.</span></div>
         </div></div>
       <button class="btn primary block" type="submit">Salvar regras</button>
@@ -1398,7 +1530,8 @@ function modalCotacao(m, c){
   modalAnexo = null;
   openModal(`<h2>Nova cotação</h2>
     <form id="mform" class="stack" style="gap:12px">
-      ${!c ? `<div class="field"><label for="mc-desc">O que está sendo comprado</label><input class="input" id="mc-desc" value="${esc(m.descricao)}"></div>` : `<span class="muted">${esc(c.descricao)}</span>`}
+      ${!c ? `<div class="field"><label for="mc-desc">O que está sendo comprado</label><input class="input" id="mc-desc" value="${esc(m.descricao)}"></div>
+      <div class="field"><label for="mc-tipo">Tipo</label><select class="input" id="mc-tipo"><option value="peca">Peça</option><option value="servico">Serviço</option><option value="ambos">Peça + serviço</option></select></div>` : `<span class="muted">${esc(c.descricao)}</span>`}
       <div class="field"><label for="mc-forn">Fornecedor</label><select class="input" id="mc-forn">${fornOptions('')}</select>
         <button type="button" class="btn sm" data-act="forn-rapido" data-ret="cot" style="align-self:flex-start">${ic('plus', 16)} Fornecedor novo</button></div>
       <div class="fgrid">
@@ -1414,7 +1547,7 @@ function modalCotacao(m, c){
       if (!fid) return toast('Escolha o fornecedor.', true);
       if (!valor) return toast('Informe o valor.', true);
       let compra = c;
-      if (!compra) compra = await api.novaCompra(m, val('mc-desc').trim() || m.descricao, m.tipo);
+      if (!compra) compra = await api.novaCompra(m, val('mc-desc').trim() || m.descricao, val('mc-tipo') || 'peca');
       await api.addCotacao(m, compra, { fornecedorId: fid, valor, prazo: val('mc-prazo'), pagamento: val('mc-pag'), obs: val('mc-obs'), anexo: modalAnexo });
       closeModal(); render(); toast('Cotação salva.');
     });
@@ -1448,7 +1581,8 @@ function modalFornecedor(f, ret){
     <form id="mform" class="stack" style="gap:12px">
       <div class="field"><label for="mf-nome">Nome</label><input class="input" id="mf-nome" value="${esc(x.nome)}"></div>
       <div class="fgrid">
-        <div class="field"><label for="mf-tel">Telefone / WhatsApp</label><input class="input" id="mf-tel" inputmode="tel" value="${esc(x.telefone)}"></div>
+        <div class="field"><label for="mf-wa">WhatsApp</label><input class="input" id="mf-wa" inputmode="tel" placeholder="(15) 99999-0000" value="${esc(x.whatsapp || '')}"></div>
+        <div class="field"><label for="mf-tel">Telefone fixo</label><input class="input" id="mf-tel" inputmode="tel" value="${esc(x.telefone)}"></div>
         <div class="field"><label for="mf-cidade">Cidade</label><input class="input" id="mf-cidade" value="${esc(x.cidade)}"></div>
         <div class="field"><label for="mf-cnpj">CNPJ</label><input class="input" id="mf-cnpj" inputmode="numeric" value="${esc(x.cnpj)}"></div>
         <div class="field"><label for="mf-cat">Categoria</label><select class="input" id="mf-cat">${['Peças', 'Serviços', 'Pneus', 'Elétrica', 'Lubrificantes', 'Outros'].map(k => `<option ${x.categoria === k ? 'selected' : ''}>${k}</option>`).join('')}</select></div>
@@ -1456,7 +1590,7 @@ function modalFornecedor(f, ret){
       <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
     </form>`, async () => {
       const nome = val('mf-nome').trim(); if (!nome) return toast('Informe o nome.', true);
-      const novo = await api.salvarFornecedor({ ...(f ? { id: f.id } : {}), nome, telefone: val('mf-tel'), cidade: val('mf-cidade'), cnpj: val('mf-cnpj'), categoria: val('mf-cat'),
+      const novo = await api.salvarFornecedor({ ...(f ? { id: f.id } : {}), nome, telefone: val('mf-tel'), whatsapp: val('mf-wa'), cidade: val('mf-cidade'), cnpj: val('mf-cnpj'), categoria: val('mf-cat'),
         provisorio: f ? (pode.cadastrarForn(ME) ? false : f.provisorio) : !pode.cadastrarForn(ME) });
       if (ret === 'draft') { draft.fornecedorId = novo.id; closeModal(); render(); }
       else if (ret === 'emerg' && ctxE) { modalEmergencial(ctxE, { ...prevE, forn: novo.id }); }
@@ -1471,7 +1605,7 @@ function modalEmergencial(m, prev = {}){
   emergCtx = m;
   const teto = S.config.tetoEmergencial;
   openModal(`<h2>Compra emergencial</h2>
-    <div class="notice bad"><span>Dispensa cotação. O número da OC sai na hora, até <b>${fmtR(teto)}</b>. Acima disso, vai para o gestor aprovar. Anexe a NF e a foto em até ${S.config.prazoRegularizacaoH} h.</span></div>
+    <div class="notice bad"><span>Sem cotação: a OC sai na hora, até <b>${fmtR(teto)}</b> (acima disso, vai para o gestor). Depois, o analista lança uma cotação de referência para medir se pagamos caro.</span></div>
     <form id="mform" class="stack" style="gap:12px">
       <div class="field"><label for="me-desc">O que está comprando</label><input class="input" id="me-desc" value="${esc(prev.desc ?? m.descricao)}"></div>
       <div class="field"><label for="me-forn">Onde vai comprar</label><select class="input" id="me-forn">${fornOptions(prev.forn || '')}</select>
@@ -1570,7 +1704,7 @@ function modalRedefinir(u){
 let nfFoto = null;
 function modalNF(o){
   nfFoto = null;
-  openModal(`<h2>Recebimento · ${esc(o.num)}</h2><p class="muted" style="margin:0">Aprovado: <b class="num">${fmtR(o.valor)}</b>. Tolerância de ${String(S.config.toleranciaNF).replace('.', ',')}%.</p>
+  openModal(`<h2>Nota fiscal · ${esc(o.num)}</h2><p class="muted" style="margin:0">Aprovado: <b class="num">${fmtR(o.valor)}</b>. NF acima de ${String(S.config.toleranciaNF).replace('.', ',')}% vai para o gestor.</p>
     <form id="mform" class="stack" style="gap:12px">
       <div class="fgrid">
         <div class="field"><label for="nf-num">Número da NF</label><input class="input" id="nf-num" inputmode="numeric"></div>
@@ -1583,7 +1717,48 @@ function modalNF(o){
       if (!nfFoto && !val('nf-num').trim()) return toast('Informe o número ou anexe a foto da NF.', true);
       const st = await api.registrarNF(o, { numero: val('nf-num').trim(), valor: v, foto: nfFoto });
       closeModal(); render();
-      toast(st === 'divergente' ? 'NF acima da tolerância. Foi para o gestor.' : 'Recebimento registrado.', st === 'divergente');
+      toast(st === 'divergente' ? 'NF acima da tolerância. Foi para o gestor.' : 'NF registrada.', st === 'divergente');
+    });
+}
+let entregaFoto = null;
+function modalEntrega(o){
+  entregaFoto = null;
+  const m = manut(o.manutencaoId);
+  openModal(`<h2>Confirmar entrega · ${esc(o.num)}</h2>
+    <p style="margin:0">A peça chegou ou o serviço foi feito? ${m && !ehEstoque(m) ? 'Quando todas as compras da manutenção estiverem entregues, ela encerra sozinha.' : 'A compra para estoque encerra quando tudo for entregue.'} A NF pode vir depois.</p>
+    <form id="mform" class="stack" style="gap:12px">
+      <div class="field"><label for="en-foto">Foto da peça ou do recibo (opcional)</label><input class="input" id="en-foto" type="file" accept="image/*" capture="environment"></div>
+      <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Confirmar entrega</button></div>
+    </form>`, async () => {
+      await api.confirmarEntrega(o, { foto: entregaFoto });
+      closeModal(); render();
+      const mm = manut(o.manutencaoId);
+      toast(mm?.encerradaEm ? 'Entrega confirmada. Manutenção encerrada.' : 'Entrega confirmada.');
+    });
+}
+let postAnexo = null;
+function modalPosterior(o){
+  postAnexo = null;
+  fornCtx = null;
+  openModal(`<h2>Cotação posterior · ${esc(o.num)}</h2>
+    <p class="muted" style="margin:0">Na emergência pagamos <b class="num">${fmtR(o.valor)}</b> em ${esc(nomeF(o.fornecedorId))}. Lance o preço de outro fornecedor para o mesmo item.</p>
+    <form id="mform" class="stack" style="gap:12px">
+      <div class="field"><label for="mp-forn">Fornecedor</label><select class="input" id="mp-forn">${fornOptions('')}</select></div>
+      <div class="fgrid">
+        <div class="field"><label for="mp-valor">Valor (R$)</label><input class="input num" id="mp-valor" inputmode="decimal" placeholder="0,00"></div>
+        <div class="field"><label for="mp-prazo">Prazo de entrega</label><input class="input" id="mp-prazo" placeholder="Ex.: 2 dias"></div>
+      </div>
+      <div class="field"><label for="mp-obs">Observação</label><input class="input" id="mp-obs" placeholder="Opcional"></div>
+      <div class="field"><label for="mp-anexo">Anexo (foto do orçamento)</label><input class="input" id="mp-anexo" type="file" accept="image/*"></div>
+      <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Salvar</button></div>
+    </form>`, async () => {
+      const fid = val('mp-forn'), valor = parseR(val('mp-valor'));
+      if (!fid) return toast('Escolha o fornecedor.', true);
+      if (!valor) return toast('Informe o valor.', true);
+      await api.addCotacaoPosterior(o, { fornecedorId: fid, valor, prazo: val('mp-prazo'), obs: val('mp-obs'), anexo: postAnexo });
+      closeModal(); render();
+      const d = o.valor - valor;
+      toast(d > 0 ? `Registrado: pagamos ${fmtR(d)} a mais.` : d < 0 ? `Registrado: pagamos ${fmtR(-d)} a menos.` : 'Registrado: mesmo valor.');
     });
 }
 const val = id => document.getElementById(id)?.value ?? '';
@@ -1642,6 +1817,7 @@ document.addEventListener('click', async e => {
       if (k === 'draft') src = draft.fotos[+i];
       else if (k.startsWith('m:')) src = manut(k.slice(2))?.fotos[+i];
       else if (k.startsWith('nf:')) src = ordem(k.slice(3))?.nf?.foto;
+      else if (k.startsWith('en:')) src = ordem(k.slice(3))?.entregaFoto;
       if (src) openModal(`<div class="viewer"><img src="${src}" alt="Foto"></div><div class="foot"><button class="btn" data-act="fechar">Fechar</button></div>`);
       break; }
     case 'ver-anexo': { const q = c?.cotacoes.find(x => x.id === a.dataset.q); if (q?.anexo) openModal(`<div class="viewer"><img src="${q.anexo}" alt="Anexo da cotação"></div><div class="foot"><button class="btn" data-act="fechar">Fechar</button></div>`); break; }
@@ -1653,6 +1829,11 @@ document.addEventListener('click', async e => {
     case 'cancelar-manut': modalJustificar({ titulo:'Cancelar demanda', texto:'A demanda sai da fila. OCs já geradas continuam valendo.', label:'Motivo', obrig:true, botao:'Cancelar demanda', onOk: async t => { await api.cancelarManut(m, t); closeModal(); go('fila'); toast('Demanda cancelada.'); } }); break;
     case 'cotar-nova': fornCtx = { m, c:null }; modalCotacao(m, null); break;
     case 'emerg': modalEmergencial(m); break;
+    case 'entrega': modalEntrega(ordem(a.dataset.o)); break;
+    case 'posterior': modalPosterior(ordem(a.dataset.o)); break;
+    case 'oc-f': V.ocF = a.dataset.v; render(); break;
+    case 'push-on': await ativarPush(); render(); toast('Avisos ativados. Você será avisado quando houver compra para aprovar.'); break;
+    case 'push-off': await desativarPush(); render(); toast('Avisos desativados neste aparelho.'); break;
     case 'cotar': fornCtx = { m, c }; modalCotacao(m, c); break;
     case 'nova-compra': modalNovaCompra(m); break;
     case 'escolher': await api.escolher(m, c, a.dataset.q); render(); break;
@@ -1745,6 +1926,8 @@ document.addEventListener('change', async e => {
     render();
   }
   if (el.id === 'mc-anexo' && el.files[0]) { try { modalAnexo = await compressImage(el.files[0], 1400, 0.7); } catch (err) { toast('Não consegui ler o anexo.', true); } }
+  if (el.id === 'en-foto' && el.files[0]) { try { entregaFoto = await compressImage(el.files[0], 1400, 0.7); } catch (err) { toast('Não consegui ler a foto.', true); } }
+  if (el.id === 'mp-anexo' && el.files[0]) { try { postAnexo = await compressImage(el.files[0], 1400, 0.7); } catch (err) { toast('Não consegui ler o anexo.', true); } }
   if (el.id === 'nf-foto' && el.files[0]) { try { nfFoto = await compressImage(el.files[0], 1600, 0.72); } catch (err) { toast('Não consegui ler a foto da NF.', true); } }
 });
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('#modal-root .modal')) closeModal(); });
@@ -1753,7 +1936,7 @@ function exportCSV(){
   const cab = ['OC', 'Data aprovação', 'Placa / destino', 'Fornecedor', 'CNPJ', 'Manutenção', 'Descrição', 'Valor aprovado', 'NF', 'Valor NF', 'Situação', 'Emergencial', 'Aprovado por'];
   const linhas = visOrdens().map(o => { const m = manut(o.manutencaoId), c = m?.compras.find(x => x.id === o.compraId), f = forn(o.fornecedorId);
     return [o.num, fmtD(o.aprovadoEm), alvoTxt(o), f?.nome || '', f?.cnpj || '', m?.num || '', c?.descricao || '', String(o.valor.toFixed(2)).replace('.', ','),
-      o.nf?.numero || '', o.nf ? String(o.nf.valor.toFixed(2)).replace('.', ',') : '', o.status, o.emergencial ? 'Sim' : 'Não', nomeU(o.aprovadoPor)]; });
+      o.nf?.numero || '', o.nf ? String(o.nf.valor.toFixed(2)).replace('.', ',') : '', stOCtxt(o)[0], o.emergencial ? 'Sim' : 'Não', nomeU(o.aprovadoPor)]; });
   const csv = '﻿' + [cab, ...linhas].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
   try {
     const url = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
