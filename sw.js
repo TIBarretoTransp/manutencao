@@ -1,6 +1,6 @@
 // Cache simples para abrir o app mesmo com sinal fraco.
 // Ao publicar uma versão nova, aumente o número abaixo.
-const CACHE = 'barreto-manutencao-v4';
+const CACHE = 'barreto-manutencao-v5';
 const ARQUIVOS = ['./', 'index.html', 'logo.png', 'manifest.webmanifest', 'config.js',
   'icons/icon-192.png', 'icons/icon-512.png', 'icons/apple-touch-icon.png', 'icons/favicon.png'];
 

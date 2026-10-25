@@ -372,6 +372,9 @@ function rel(iso){
   return d === 1 ? 'ontem' : `há ${d} dias`;
 }
 const initials = n => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).map(p => p[0]).join('').toUpperCase();
+const TEL_DOM = 'tel.barretomanutencao.app';
+function normTel(v){ let d = String(v || '').replace(/\D/g, ''); if (d.startsWith('55') && (d.length === 12 || d.length === 13)) d = d.slice(2); return (d.length === 10 || d.length === 11) ? d : null; }
+const fmtTel = d => !d ? '' : d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : d;
 const normPlaca = p => String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^([A-Z]{3})([0-9A-Z]{4})$/, '$1-$2');
 
 /* ---------- dados ---------- */
@@ -619,6 +622,7 @@ const apiLocal = {
     if (u.id) Object.assign(user(u.id), u); else { u.id = uid(); S.users.push(u); }
     persist();
   },
+  async redefinirSenha(){},
   async salvarConfig(c){ S.config = c; persist(); }
 };
 
@@ -668,7 +672,7 @@ async function reload(){
     config: { alcada: { motorista: num(cfg.alcada_motorista), mecanico: num(cfg.alcada_mecanico), analista: num(cfg.alcada_analista) },
       faixas: [ { ate: num(cfg.faixa1), n: 1 }, { ate: num(cfg.faixa2), n: 2 }, { ate: null, n: 3 } ],
       tetoEmergencial: num(cfg.teto_emergencial), prazoRegularizacaoH: cfg.prazo_regularizacao_h, toleranciaNF: num(cfg.tolerancia_nf) },
-    users: p.map(u => ({ id: u.id, nome: u.nome || u.email, email: u.email, perfil: u.perfil, placa: u.placa, ativo: u.ativo })),
+    users: p.map(u => ({ id: u.id, nome: u.nome || u.email, email: (u.email || '').endsWith(TEL_DOM) ? '' : u.email, telefone: u.telefone || '', perfil: u.perfil, placa: u.placa, ativo: u.ativo })),
     veiculos: vs.map(v => ({ id: v.id, placa: v.placa, descricao: v.descricao })),
     fornecedores: fs.map(f => ({ id: f.id, nome: f.nome, cnpj: f.cnpj, cidade: f.cidade, telefone: f.telefone, categoria: f.categoria, provisorio: f.provisorio })),
     manutencoes: ms.map(m => ({ id: m.id, num: m.num, placa: m.placa, descricao: m.descricao, tipo: m.tipo, prioridade: m.prioridade, prioridadeConfirmada: m.prioridade_confirmada,
@@ -687,6 +691,16 @@ async function loadHist(mid){
   if (error) return;
   histCache[mid] = data.map(h => ({ em: h.em, por: h.por, txt: h.txt }));
   const m = manut(mid); if (m) m.historico = histCache[mid];
+}
+async function adminUsuarios(body){
+  const { data, error } = await sb.functions.invoke('admin-usuarios', { body });
+  if (error) {
+    let msg = error.message;
+    try { const j = await error.context.json(); if (j?.erro) msg = j.erro; } catch (e) {}
+    throw new Error(msg);
+  }
+  if (data?.erro) throw new Error(data.erro);
+  return data;
 }
 const apiRemote = {
   async criarDemanda(d){
@@ -723,7 +737,11 @@ const apiRemote = {
   cancelarManut: (m, motivo) => run('cancelar_manut', { p_manut: m.id, p_motivo: motivo }),
   async salvarFornecedor(f){ const id = await rpc('salvar_fornecedor', { p: f }); await reload(); return forn(id); },
   salvarVeiculo: v => run('salvar_veiculo', { p: { ...v, placa: normPlaca(v.placa) } }),
-  salvarUsuario: u => run('salvar_usuario', { p: { id: u.id, nome: u.nome, perfil: u.perfil, placa: u.placa, ativo: u.ativo !== false } }),
+  async salvarUsuario(u){
+    if (!u.id) { await adminUsuarios({ acao: 'criar', nome: u.nome, telefone: u.telefone, senha: u.senha, perfil: u.perfil, placa: u.placa }); await reload(); return; }
+    await run('salvar_usuario', { p: { id: u.id, nome: u.nome, perfil: u.perfil, placa: u.placa, ativo: u.ativo !== false } });
+  },
+  redefinirSenha: (u, senha) => adminUsuarios({ acao: 'senha', id: u.id, senha }),
   salvarConfig: c => run('salvar_config', { p: { alcada_motorista: c.alcada.motorista, alcada_mecanico: c.alcada.mecanico, alcada_analista: c.alcada.analista,
     faixa1: c.faixas[0].ate, faixa2: c.faixas[1].ate, teto_emergencial: c.tetoEmergencial, prazo_regularizacao_h: c.prazoRegularizacaoH, tolerancia_nf: c.toleranciaNF } })
 };
@@ -862,7 +880,7 @@ function viewLogin(){
     <div style="text-align:center"><h1 style="font-family:var(--f-display);font-size:30px;color:var(--heading)">Manutenção</h1>
       <p class="muted" style="margin:4px 0 0">Demandas, cotações e ordens de compra da frota</p></div>
     <form id="form-login" class="card pad stack" style="gap:14px">
-      <div class="field"><label for="lg-email">E-mail</label><input class="input" id="lg-email" type="email" autocomplete="username" inputmode="email"></div>
+      <div class="field"><label for="lg-email">Celular</label><input class="input" id="lg-email" type="text" autocomplete="username" inputmode="tel" placeholder="(15) 99999-0000"><span class="hint">Com DDD. Quem usa e-mail pode digitar o e-mail aqui.</span></div>
       <div class="field"><label for="lg-senha">Senha</label><input class="input" id="lg-senha" type="password" autocomplete="current-password"></div>
       ${loginErro ? `<div class="notice bad"><span>${esc(loginErro)}</span></div>` : ''}
       <button class="btn primary block" type="submit">Entrar</button>
@@ -1309,7 +1327,7 @@ function viewCadastros(){
     </tbody></table></div>`;
   if (V.cad === 'usuarios') body = `<div class="row"><button class="btn primary" data-act="user-edit">${ic('plus', 18)} Usuário</button></div>
     <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Nome</th><th>Perfil</th><th>Alçada</th><th>Placa padrão</th><th></th></tr></thead><tbody>
-    ${S.users.map(u => `<tr><td><b>${esc(u.nome)}</b>${u.email ? `<div class="small muted">${esc(u.email)}</div>` : ''}${u.ativo === false ? ' <span class="pill neutral">inativo</span>' : ''}</td><td>${PERFIS[u.perfil]}</td><td class="num">${u.perfil === 'gestor' ? 'Sem limite' : alcada(u) ? fmtR(alcada(u)) : 'Só emergencial'}</td><td>${esc(u.placa)}</td><td><button class="btn sm" data-act="user-edit" data-id="${u.id}">Editar</button></td></tr>`).join('')}
+    ${S.users.map(u => `<tr><td><b>${esc(u.nome)}</b>${u.telefone || u.email ? `<div class="small muted">${u.telefone ? esc(fmtTel(u.telefone)) : esc(u.email)}</div>` : ''}${u.ativo === false ? ' <span class="pill neutral">inativo</span>' : ''}</td><td>${PERFIS[u.perfil]}</td><td class="num">${u.perfil === 'gestor' ? 'Sem limite' : alcada(u) ? fmtR(alcada(u)) : 'Só emergencial'}</td><td>${esc(u.placa)}</td><td><button class="btn sm" data-act="user-edit" data-id="${u.id}">Editar</button></td></tr>`).join('')}
     </tbody></table></div>`;
   return `<div class="content" style="max-width:1000px"><div class="page-h"><h1>Cadastros</h1></div>
     <div class="seg blue" style="max-width:480px">${tabs.map(([v, l]) => `<button data-act="cad-tab" data-v="${v}" aria-pressed="${V.cad === v}">${l}</button>`).join('')}</div>${body}</div>`;
@@ -1441,26 +1459,42 @@ function modalSenha(dica){
       closeModal(); toast('Senha alterada.'); });
 }
 function modalUsuario(u){
-  if (REMOTE && !u) {
-    openModal(`<h2>Novo usuário</h2>
-      <ol class="stack" style="margin:0;padding-left:20px;gap:8px">
-        <li>No Supabase, abra <b>Authentication › Users</b> e clique em <b>Add user › Create new user</b>.</li>
-        <li>Informe o e-mail e uma senha provisória e marque <b>Auto Confirm User</b>.</li>
-        <li>A pessoa aparece aqui como motorista. Toque em <b>Editar</b> para ajustar nome, perfil e placa.</li>
-        <li>Passe o e-mail e a senha provisória; ela troca a senha em Mais › Trocar senha.</li>
-      </ol>
-      <div class="foot"><button class="btn primary" data-act="fechar">Entendi</button></div>`);
-    return;
-  }
-  const x = u || { nome:'', perfil:'motorista', placa:'' };
-  openModal(`<h2>${u ? 'Editar usuário' : 'Novo usuário'}</h2><form id="mform" class="stack">
-    <div class="field"><label for="mu-nome">Nome</label><input class="input" id="mu-nome" value="${esc(x.nome)}"></div>
-    <div class="field"><label for="mu-perfil">Perfil</label><select class="input" id="mu-perfil">${Object.entries(PERFIS).map(([k, l]) => `<option value="${k}" ${x.perfil === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-    <div class="field"><label for="mu-placa">Placa padrão (motorista)</label><select class="input" id="mu-placa"><option value="">Nenhuma</option>${S.veiculos.map(v => `<option ${x.placa === v.placa ? 'selected' : ''}>${esc(v.placa)}</option>`).join('')}</select></div>
-    ${u ? `<label class="switch"><input type="checkbox" id="mu-ativo" ${x.ativo !== false ? 'checked' : ''} style="accent-color:var(--primary)"><span class="stack" style="gap:2px"><b>Acesso ativo</b><span class="small muted">Desmarque para bloquear o acesso sem apagar o histórico.</span></span></label>` : ''}
-    <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Salvar</button></div></form>`,
-    async () => { const n = val('mu-nome').trim(); if (!n) return toast('Informe o nome.', true);
-      await api.salvarUsuario({ ...(u ? { id: u.id } : {}), nome: n, perfil: val('mu-perfil'), placa: val('mu-placa'), ativo: u ? document.getElementById('mu-ativo')?.checked !== false : true }); closeModal(); render(); toast('Usuário salvo.'); });
+  const novo = !u;
+  const x = u || { nome:'', perfil:'motorista', placa:'', telefone:'' };
+  openModal(`<h2>${novo ? 'Novo usuário' : 'Editar usuário'}</h2><form id="mform" class="stack" style="gap:12px">
+    <div class="field"><label for="mu-nome">Nome</label><input class="input" id="mu-nome" value="${esc(x.nome)}" autocomplete="off" placeholder="Nome e sobrenome"></div>
+    ${REMOTE ? (novo
+      ? `<div class="fgrid">
+          <div class="field"><label for="mu-tel">Celular (login)</label><input class="input" id="mu-tel" inputmode="tel" placeholder="(15) 99999-0000" autocomplete="off"></div>
+          <div class="field"><label for="mu-senha">Senha provisória</label><input class="input" id="mu-senha" type="text" autocomplete="off" placeholder="mín. 6 caracteres"></div>
+        </div><span class="hint">Passe o celular e a senha para a pessoa. Ela troca a senha depois em Mais › Trocar senha.</span>`
+      : `<div class="field"><span class="lbl">Login</span><span>${x.telefone ? esc(fmtTel(x.telefone)) : esc(x.email || '—')}</span></div>`) : ''}
+    <div class="fgrid">
+      <div class="field"><label for="mu-perfil">Perfil</label><select class="input" id="mu-perfil">${Object.entries(PERFIS).map(([k, l]) => `<option value="${k}" ${x.perfil === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
+      <div class="field"><label for="mu-placa">Placa padrão (motorista)</label><select class="input" id="mu-placa"><option value="">Nenhuma</option>${S.veiculos.map(v => `<option ${x.placa === v.placa ? 'selected' : ''}>${esc(v.placa)}</option>`).join('')}</select></div>
+    </div>
+    ${!novo ? `<label class="switch"><input type="checkbox" id="mu-ativo" ${x.ativo !== false ? 'checked' : ''} style="accent-color:var(--primary)"><span class="stack" style="gap:2px"><b>Acesso ativo</b><span class="small muted">Desmarque para bloquear o acesso sem apagar o histórico.</span></span></label>` : ''}
+    ${!novo && REMOTE ? `<button type="button" class="btn" data-act="user-senha" data-id="${u.id}" style="align-self:flex-start">Redefinir senha</button>` : ''}
+    <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">${novo ? 'Criar usuário' : 'Salvar'}</button></div></form>`,
+    async () => {
+      const n = val('mu-nome').trim(); if (!n) return toast('Informe o nome.', true);
+      const dados = { ...(u ? { id: u.id } : {}), nome: n, perfil: val('mu-perfil'), placa: val('mu-placa'),
+        ativo: u ? document.getElementById('mu-ativo')?.checked !== false : true };
+      if (novo && REMOTE) {
+        const t = normTel(val('mu-tel')); if (!t) return toast('Celular inválido. Use DDD + número.', true);
+        const sn = val('mu-senha'); if (sn.length < 6) return toast('A senha provisória precisa ter pelo menos 6 caracteres.', true);
+        dados.telefone = t; dados.senha = sn;
+      }
+      await api.salvarUsuario(dados); closeModal(); render();
+      toast(novo && REMOTE ? `Usuário criado. Login: ${fmtTel(dados.telefone)}` : 'Usuário salvo.');
+    });
+}
+function modalRedefinir(u){
+  openModal(`<h2>Redefinir senha</h2><p class="muted" style="margin:0">${esc(u.nome)} · ${u.telefone ? esc(fmtTel(u.telefone)) : esc(u.email || '')}</p>
+    <form id="mform" class="stack"><div class="field"><label for="rs-senha">Nova senha provisória</label><input class="input" id="rs-senha" type="text" autocomplete="off" placeholder="mín. 6 caracteres"></div>
+    <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Redefinir</button></div></form>`,
+    async () => { const sn = val('rs-senha'); if (sn.length < 6) return toast('A senha precisa ter pelo menos 6 caracteres.', true);
+      await api.redefinirSenha(u, sn); closeModal(); toast('Senha redefinida. Passe a nova senha para a pessoa.'); });
 }
 let nfFoto = null;
 function modalNF(o){
@@ -1507,10 +1541,13 @@ document.addEventListener('click', async e => {
     case 'sair': if (REMOTE) { await sb.auth.signOut(); } ME = null; lsSet(LS_USER, null); render(); break;
     case 'esqueci': {
       const em = val('lg-email').trim();
-      if (!em) { toast('Digite seu e-mail e toque de novo em "Esqueci minha senha".', true); break; }
-      const { error } = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.href.split('#')[0] });
-      if (error) throw new Error(error.message);
-      toast('Enviamos um link para criar nova senha no seu e-mail.'); break; }
+      if (em.includes('@')) {
+        const { error } = await sb.auth.resetPasswordForEmail(em, { redirectTo: location.href.split('#')[0] });
+        if (error) throw new Error(error.message);
+        toast('Enviamos um link para criar nova senha no seu e-mail.'); break;
+      }
+      openModal(`<h2>Esqueci minha senha</h2><p style="margin:0">Peça ao gestor para redefinir a sua senha. Ele faz isso pelo app, em Cadastros › Usuários, e passa uma senha provisória para você.</p><div class="foot"><button class="btn primary" data-act="fechar">Entendi</button></div>`);
+      break; }
     case 'trocar-senha': modalSenha(); break;
     case 'fechar': closeModal(); break;
     case 'tab': V.tab = a.dataset.v; if (V.so === 'encerradas') V.so = ''; lsSet(LS_TAB, V.tab); render(); break;
@@ -1575,6 +1612,7 @@ document.addEventListener('click', async e => {
     case 'forn-edit': modalFornecedor(a.dataset.id ? forn(a.dataset.id) : null, null); break;
     case 'veic-edit': modalVeiculo(a.dataset.id ? S.veiculos.find(v => v.id === a.dataset.id) : null); break;
     case 'user-edit': modalUsuario(a.dataset.id ? user(a.dataset.id) : null); break;
+    case 'user-senha': modalRedefinir(user(a.dataset.id)); break;
   }
   } catch (err) { console.error(err); toast(err.message || 'Algo deu errado. Tente de novo.', true); }
   finally { setBusy(false); }
@@ -1593,8 +1631,15 @@ async function onSubmit(e){
   if (e.target.id === 'form-nova') return submitNova();
   if (e.target.id === 'form-login') {
     loginErro = '';
-    const { data, error } = await sb.auth.signInWithPassword({ email: val('lg-email').trim(), password: val('lg-senha') });
-    if (error) { loginErro = error.message === 'Invalid login credentials' ? 'E-mail ou senha incorretos.' : error.message; render(); return; }
+    const ident = val('lg-email').trim();
+    let email = ident;
+    if (!ident.includes('@')) {
+      const t = normTel(ident);
+      if (!t) { loginErro = 'Digite o celular com DDD, por exemplo (15) 99999-0000.'; render(); setVal('lg-email', ident); return; }
+      email = `${t}@${TEL_DOM}`;
+    }
+    const { data, error } = await sb.auth.signInWithPassword({ email, password: val('lg-senha') });
+    if (error) { loginErro = error.message === 'Invalid login credentials' ? 'Celular ou senha incorretos.' : error.message; render(); setVal('lg-email', ident); return; }
     await entrarRemoto(data.user); return;
   }
   if (e.target.id === 'form-config') {

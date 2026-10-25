@@ -20,8 +20,10 @@ create table if not exists public.profiles (
   perfil    text not null default 'motorista' check (perfil in ('motorista','mecanico','analista','gestor')),
   placa     text not null default '',
   ativo     boolean not null default true,
+  telefone  text not null default '',
   criado_em timestamptz not null default now()
 );
+alter table public.profiles add column if not exists telefone text not null default '';
 
 create table if not exists public.config (
   id                    int primary key default 1 check (id = 1),
@@ -152,8 +154,10 @@ create index if not exists ordens_manut_idx    on public.ordens (manutencao_id);
 create or replace function public._novo_usuario() returns trigger
 language plpgsql security definer set search_path = public as $$
 begin
-  insert into public.profiles (id, email, nome, perfil)
-  values (new.id, new.email, split_part(coalesce(new.email, ''), '@', 1),
+  insert into public.profiles (id, email, nome, telefone, perfil)
+  values (new.id, new.email,
+          coalesce(nullif(trim(new.raw_user_meta_data->>'nome'), ''), split_part(coalesce(new.email, ''), '@', 1)),
+          coalesce(new.raw_user_meta_data->>'telefone', ''),
           case when exists (select 1 from public.profiles where perfil = 'gestor') then 'motorista' else 'gestor' end)
   on conflict (id) do nothing;
   return new;
@@ -605,6 +609,7 @@ revoke execute on function public.criar_demanda(text, text, text, text, text[], 
   public.registrar_nf(uuid, text, numeric, text), public.aceitar_divergencia(uuid), public.revisar_emergencial(uuid),
   public.encerrar(uuid), public.reabrir(uuid), public.cancelar_manut(uuid, text), public.salvar_fornecedor(jsonb),
   public.salvar_veiculo(jsonb), public.salvar_usuario(jsonb), public.salvar_config(jsonb) from public, anon;
+revoke execute on function public.eu_ativo() from public, anon;
 grant execute on function public.criar_demanda(text, text, text, text, text[], jsonb), public.definir_prioridade(uuid, text),
   public.atender(uuid), public.comentar(uuid, text), public.nova_compra(uuid, text, text),
   public.add_cotacao(uuid, uuid, numeric, text, text, text, text), public.remover_cotacao(uuid), public.escolher_cotacao(uuid, uuid),
