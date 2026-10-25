@@ -561,6 +561,17 @@ const apiLocal = {
     persist();
     return { m, oc };
   },
+  async compraEmergencial(m, e){
+    const c = { id: uid(), descricao: e.descricao || m.descricao, tipo: m.tipo, status: 'cotacao', escolhidaId: null, justificativa: e.justificativa,
+      dispensa: 'Compra emergencial', solicitadaEm: now(), solicitadaPor: ME.id, ocId: null, motivoReprova: null, cotacoes: [] };
+    const q = { id: uid(), fornecedorId: e.fornecedorId, valor: e.valor, prazo: 'Imediato', pagamento: e.pagamento || '', obs: '', anexo: null, por: ME.id, em: now() };
+    c.cotacoes.push(q); c.escolhidaId = q.id; m.compras.push(c);
+    m.prioridade = 'urgente'; m.prioridadeConfirmada = true;
+    let oc = null;
+    if (e.valor <= S.config.tetoEmergencial) { oc = gerarOC(m, c, true); log(m, `Compra emergencial: ${oc.num} gerada na hora (${fmtR(e.valor)})`); }
+    else { c.status = 'aprovacao'; log(m, `Compra emergencial de ${fmtR(e.valor)} acima do teto: enviada ao gestor`); }
+    persist(); return { oc };
+  },
   async definirPrioridade(m, p){ m.prioridade = p; m.prioridadeConfirmada = true; log(m, `Definiu como ${p}`); persist(); },
   async atender(m){ m.atendidoPor = ME.id; log(m, 'Assumiu o atendimento'); persist(); },
   async comentar(m, txt){ log(m, 'Comentário: ' + txt); persist(); },
@@ -718,6 +729,11 @@ const apiRemote = {
     await reload();
     return { m: manut(r.manutencao_id), oc: r.ordem_id ? ordem(r.ordem_id) : null };
   },
+  async compraEmergencial(m, e){
+    const r = await rpc('compra_emergencial', { p_manut: m.id, p_descricao: e.descricao, p_tipo: m.tipo, p_fornecedor: e.fornecedorId, p_valor: e.valor, p_pagamento: e.pagamento, p_justificativa: e.justificativa });
+    await reload(); if (V.id) await loadHist(m.id);
+    return { oc: r.ordem_id ? ordem(r.ordem_id) : null };
+  },
   definirPrioridade: (m, p) => run('definir_prioridade', { p_manut: m.id, p_prioridade: p }),
   atender: m => run('atender', { p_manut: m.id }),
   comentar: (m, t) => run('comentar', { p_manut: m.id, p_txt: t }),
@@ -777,7 +793,7 @@ async function entrarRemoto(u){
   ME = user(u.id);
   if (!ME || ME.ativo === false) { ME = null; await sb.auth.signOut(); loginErro = 'Seu acesso está desativado. Fale com o gestor.'; render(); return; }
   assinarTempoReal();
-  V.view = 'fila'; render();
+  go('fila', null, { replace: true });
 }
 let loginErro = '';
 
@@ -796,10 +812,26 @@ let ME = null;
 const V = { view:'fila', id:null, tab: lsGet(LS_TAB) || 'urgente', placa:'', busca:'', so:'' , ocBusca:'', cad:'fornecedores' };
 let draft = null;
 
-function go(view, id = null){
+function go(view, id = null, opt = {}){
+  if (!opt.fromPop) {
+    const st = { app: 1, v: view, id };
+    try { opt.replace ? history.replaceState(st, '') : history.pushState(st, ''); } catch (e) {}
+  }
   V.view = view; V.id = id; render(); window.scrollTo(0, 0);
   if (REMOTE && view === 'demanda' && id && !histCache[id]) loadHist(id).then(() => { if (V.view === 'demanda' && V.id === id) render(); });
 }
+
+// botão voltar do celular: fecha a janela aberta ou volta para a tela anterior
+window.addEventListener('popstate', e => {
+  if (!ME) return;
+  if (document.querySelector('#modal-root .modal')) {
+    closeModal();
+    try { history.pushState({ app: 1, v: V.view, id: V.id }, ''); } catch (err) {}
+    return;
+  }
+  const st = e.state;
+  if (st && st.app) { if (st.v === 'nova' && V.view !== 'nova') draft = null; go(st.v, st.id || null, { fromPop: true }); }
+});
 
 /* ---------- toast e modal ---------- */
 let toastT;
@@ -1030,23 +1062,10 @@ function viewNova(){
         <span class="hint">As fotos são reduzidas automaticamente.</span></div>
       <div class="field"><span class="lbl">Precisa de</span>
         <div class="seg blue">${[['peca', 'Peça'], ['servico', 'Serviço'], ['ambos', 'Peça + serviço']].map(([v, l]) => `<button type="button" data-act="d-tipo" data-v="${v}" aria-pressed="${d.tipo === v}">${l}</button>`).join('')}</div></div>
-      ${!d.emergencial ? `<div class="field"><span class="lbl">Prioridade</span>
+      <div class="field"><span class="lbl">Prioridade</span>
         <div class="seg">${[['urgente', 'Urgente'], ['programada', 'Programada']].map(([v, l]) => `<button type="button" data-act="d-pri" data-v="${v}" aria-pressed="${d.prioridade === v}">${l}</button>`).join('')}</div>
-        <span class="hint">${ME.perfil === 'gestor' ? 'Como gestor, a prioridade já fica confirmada.' : 'Você sugere; o gestor confirma ou muda na fila.'}</span></div>` : ''}
-      <label class="switch ${d.emergencial ? 'on' : ''}"><input type="checkbox" id="d-emerg" ${d.emergencial ? 'checked' : ''}>
-        <span class="stack" style="gap:2px"><span style="font-weight:800;color:var(--bad)">Compra emergencial</span>
-        <span class="small muted">Parado e precisa comprar agora? O número da OC sai na hora (até ${fmtR(teto)}). NF e foto em até ${S.config.prazoRegularizacaoH} h.</span></span></label>
-      ${d.emergencial ? `<div class="emerg">
-        <div class="field"><label for="d-forn">Onde vai comprar</label>
-          <select class="input" id="d-forn" data-draft="fornecedorId"><option value="">Escolha o fornecedor</option>${S.fornecedores.map(f => `<option value="${f.id}" ${d.fornecedorId === f.id ? 'selected' : ''}>${esc(f.nome)}${f.cidade ? ' · ' + esc(f.cidade) : ''}</option>`).join('')}</select>
-          <button type="button" class="btn sm" data-act="forn-rapido" data-ret="draft" style="align-self:flex-start">${ic('plus', 16)} Fornecedor não está na lista</button></div>
-        <div class="fgrid">
-          <div class="field"><label for="d-valor">Valor (R$)</label><input class="input num" id="d-valor" data-draft="valor" inputmode="decimal" placeholder="0,00" value="${esc(d.valor)}"></div>
-          <div class="field"><label for="d-pag">Pagamento</label><input class="input" id="d-pag" data-draft="pagamento" placeholder="Ex.: cartão, faturado" value="${esc(d.pagamento)}"></div>
-        </div>
-        <div class="field"><label for="d-just">Por que é emergencial?</label><input class="input" id="d-just" data-draft="justificativa" placeholder="Ex.: parado na BR-373, carga com prazo" value="${esc(d.justificativa)}"></div>
-      </div>` : ''}
-      <div class="submitbar"><button class="btn primary block" type="submit">${d.emergencial ? 'Gerar OC emergencial' : 'Enviar para a fila'}</button></div>
+        <span class="hint">${ME.perfil === 'gestor' ? 'Como gestor, a prioridade já fica confirmada.' : 'Você sugere; o gestor confirma ou muda na fila.'}</span></div>
+      <div class="submitbar"><button class="btn primary block" type="submit">Abrir demanda</button></div>
     </form>
   </div>`;
 }
@@ -1054,19 +1073,10 @@ async function submitNova(){
   const d = draft;
   if (d.destino !== 'estoque' && !d.placa) return toast('Escolha a placa.', true);
   if (!d.descricao.trim()) return toast(d.destino === 'estoque' ? 'Descreva o que precisa comprar.' : 'Descreva o que está acontecendo.', true);
-  let emerg = null;
-  if (d.emergencial) {
-    const valor = parseR(d.valor);
-    if (!d.fornecedorId) return toast('Escolha o fornecedor da compra emergencial.', true);
-    if (!valor) return toast('Informe o valor da compra emergencial.', true);
-    if (!d.justificativa.trim()) return toast('Diga por que a compra é emergencial.', true);
-    emerg = { fornecedorId: d.fornecedorId, valor, justificativa: d.justificativa.trim(), pagamento: d.pagamento };
-  }
-  const { m, oc } = await api.criarDemanda({ destino: d.destino, placa: d.destino === 'estoque' ? null : d.placa, descricao: d.descricao.trim(), tipo: d.tipo, prioridade: d.prioridade, fotos: d.fotos, emergencial: emerg });
+  const { m } = await api.criarDemanda({ destino: d.destino, placa: d.destino === 'estoque' ? null : d.placa, descricao: d.descricao.trim(), tipo: d.tipo, prioridade: d.prioridade, fotos: d.fotos, emergencial: null });
   draft = null;
-  if (oc) { toast(`${oc.num} gerada. Informe ao fornecedor.`); go('oc', oc.id); }
-  else if (emerg) { toast('Valor acima do teto emergencial. Enviado ao gestor como urgente.'); go('demanda', m.id); }
-  else { toast(`${m.num} enviada para a fila.`); go('fila'); }
+  toast(`${m.num} aberta.`);
+  go('demanda', m.id, { replace: true });
 }
 
 /* ---------- detalhe da demanda ---------- */
@@ -1088,7 +1098,8 @@ function viewDemanda(){
     if (!bar && barHtml) { bar = barHtml; h = h.replace('<section class="compra"', '<section class="compra" data-bar="1"'); }
     return h;
   }).join('');
-  if (!bar && compras.length === 0 && pode.cotar(ME) && ativa) bar = `<button class="btn primary" data-act="cotar-nova">Lançar cotação</button>`;
+  const emergBtn = `<button class="btn danger" data-act="emerg">Compra emergencial</button>`;
+  if (!bar && compras.length === 0 && ativa) bar = pode.cotar(ME) ? emergBtn + `<button class="btn primary" data-act="cotar-nova">Lançar cotação</button>` : emergBtn.replace('btn danger', 'btn primary');
   if (!bar && podeEncerrar) bar = `<button class="btn primary" data-act="encerrar">Encerrar manutenção</button>`;
 
   return `<div class="content">
@@ -1113,9 +1124,10 @@ function viewDemanda(){
       <div class="b">
         ${compras.length ? `<div class="row" style="justify-content:space-between"><h2 style="font-size:18px;font-weight:800;color:var(--heading)">Compras e cotações</h2></div>${comprasHtml}` : `<div class="card pad stack">
           <h2>Cotações</h2>
-          <p class="muted" style="margin:0">Nenhuma cotação lançada. ${pode.cotar(ME) ? 'Lance a primeira para começar.' : 'O mecânico ou o analista vai cotar.'}</p>
-          ${pode.cotar(ME) && ativa ? `<button class="btn primary hide-m" data-act="cotar-nova" style="align-self:flex-start">${ic('plus', 18)} Lançar cotação</button>` : ''}</div>`}
-        ${compras.length && pode.cotar(ME) && ativa ? `<button class="btn" data-act="nova-compra" style="align-self:flex-start">${ic('plus', 18)} Outra compra nesta manutenção</button>` : ''}
+          <p class="muted" style="margin:0">Nenhuma cotação lançada. ${pode.cotar(ME) ? 'Lance a primeira para começar.' : 'O mecânico ou o analista vai cotar. Se não dá para esperar, use a compra emergencial.'}</p>
+          ${ativa ? `<div class="row hide-m">${pode.cotar(ME) ? `<button class="btn primary" data-act="cotar-nova">${ic('plus', 18)} Lançar cotação</button>` : ''}<button class="btn danger" data-act="emerg">Compra emergencial</button></div>` : ''}
+          ${ativa ? `<span class="small muted">Compra emergencial: para quando não dá para esperar cotação. O número da OC sai na hora, até ${fmtR(S.config.tetoEmergencial)}.</span>` : ''}</div>`}
+        ${compras.length && ativa ? `<div class="row">${pode.cotar(ME) ? `<button class="btn" data-act="nova-compra">${ic('plus', 18)} Outra compra nesta manutenção</button>` : ''}<button class="btn danger" data-act="emerg">Compra emergencial</button></div>` : ''}
         ${podeEncerrar ? `<div class="notice ok"><b>Tudo recebido.</b><span>Todas as OCs têm NF registrada.</span><button class="btn primary hide-m" data-act="encerrar" style="align-self:flex-start;margin-top:6px">Encerrar manutenção</button></div>` : ''}
         ${s === 'encerrada' && pode.encerrar(ME) ? `<button class="btn" data-act="reabrir" style="align-self:flex-start">Reabrir manutenção</button>` : ''}
       </div>
@@ -1427,6 +1439,8 @@ function modalFornecedor(f, ret){
   fornRet = ret || null;
   const rapido = !!ret;
   const x = f || { nome:'', cnpj:'', cidade:'', telefone:'', categoria:'Peças', provisorio: rapido && !pode.cadastrarForn(ME) };
+  const prevE = ret === 'emerg' ? { desc: val('me-desc'), valor: val('me-valor'), pag: val('me-pag'), just: val('me-just') } : null;
+  const ctxE = ret === 'emerg' ? emergCtx : null;
   const prev = ret === 'cot' ? { forn: val('mc-forn'), valor: val('mc-valor'), prazo: val('mc-prazo'), pag: val('mc-pag'), obs: val('mc-obs'), desc: val('mc-desc') } : null;
   const ctx = ret === 'cot' ? fornCtx : null;
   openModal(`<h2>${f ? 'Editar fornecedor' : 'Novo fornecedor'}</h2>
@@ -1445,12 +1459,40 @@ function modalFornecedor(f, ret){
       const novo = await api.salvarFornecedor({ ...(f ? { id: f.id } : {}), nome, telefone: val('mf-tel'), cidade: val('mf-cidade'), cnpj: val('mf-cnpj'), categoria: val('mf-cat'),
         provisorio: f ? (pode.cadastrarForn(ME) ? false : f.provisorio) : !pode.cadastrarForn(ME) });
       if (ret === 'draft') { draft.fornecedorId = novo.id; closeModal(); render(); }
+      else if (ret === 'emerg' && ctxE) { modalEmergencial(ctxE, { ...prevE, forn: novo.id }); }
       else if (ret === 'cot' && ctx) { modalCotacao(ctx.m, ctx.c); setTimeout(() => { setVal('mc-forn', novo.id); if (prev) { setVal('mc-valor', prev.valor); setVal('mc-prazo', prev.prazo); setVal('mc-pag', prev.pag); setVal('mc-obs', prev.obs); if (prev.desc) setVal('mc-desc', prev.desc); } }, 0); }
       else { closeModal(); render(); }
       toast('Fornecedor salvo.');
     });
 }
 let fornCtx = null;
+let emergCtx = null;
+function modalEmergencial(m, prev = {}){
+  emergCtx = m;
+  const teto = S.config.tetoEmergencial;
+  openModal(`<h2>Compra emergencial</h2>
+    <div class="notice bad"><span>Dispensa cotação. O número da OC sai na hora, até <b>${fmtR(teto)}</b>. Acima disso, vai para o gestor aprovar. Anexe a NF e a foto em até ${S.config.prazoRegularizacaoH} h.</span></div>
+    <form id="mform" class="stack" style="gap:12px">
+      <div class="field"><label for="me-desc">O que está comprando</label><input class="input" id="me-desc" value="${esc(prev.desc ?? m.descricao)}"></div>
+      <div class="field"><label for="me-forn">Onde vai comprar</label><select class="input" id="me-forn">${fornOptions(prev.forn || '')}</select>
+        <button type="button" class="btn sm" data-act="forn-rapido" data-ret="emerg" style="align-self:flex-start">${ic('plus', 16)} Fornecedor não está na lista</button></div>
+      <div class="fgrid">
+        <div class="field"><label for="me-valor">Valor (R$)</label><input class="input num" id="me-valor" inputmode="decimal" placeholder="0,00" value="${esc(prev.valor || '')}"></div>
+        <div class="field"><label for="me-pag">Pagamento</label><input class="input" id="me-pag" placeholder="Ex.: cartão, faturado" value="${esc(prev.pag || '')}"></div>
+      </div>
+      <div class="field"><label for="me-just">Por que é emergencial?</label><input class="input" id="me-just" placeholder="Ex.: parado na BR-373, carga com prazo" value="${esc(prev.just || '')}"></div>
+      <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Gerar OC emergencial</button></div>
+    </form>`, async () => {
+      const valor = parseR(val('me-valor'));
+      if (!val('me-forn')) return toast('Escolha o fornecedor.', true);
+      if (!valor) return toast('Informe o valor.', true);
+      if (!val('me-just').trim()) return toast('Diga por que a compra é emergencial.', true);
+      const r = await api.compraEmergencial(m, { descricao: val('me-desc').trim(), fornecedorId: val('me-forn'), valor, pagamento: val('me-pag').trim(), justificativa: val('me-just').trim() });
+      closeModal();
+      if (r.oc) { toast(`${r.oc.num} gerada. Informe ao fornecedor.`); go('oc', r.oc.id); }
+      else { render(); toast(`Valor acima de ${fmtR(teto)}. Enviado ao gestor para aprovar.`); }
+    });
+}
 function modalVeiculo(v){
   const x = v || { placa:'', tipo:'tracao', marca:'', anoModelo:'' };
   openModal(`<h2>${v ? 'Editar veículo' : 'Novo veículo'}</h2><form id="mform" class="stack" style="gap:12px">
@@ -1566,7 +1608,7 @@ document.addEventListener('click', async e => {
   setBusy(true);
   try {
   switch (act) {
-    case 'entrar': ME = user(a.dataset.id); lsSet(LS_USER, ME.id); V.view = 'fila'; V.so = ''; render(); break;
+    case 'entrar': ME = user(a.dataset.id); lsSet(LS_USER, ME.id); V.so = ''; go('fila', null, { replace: true }); break;
     case 'sair': if (REMOTE) { await sb.auth.signOut(); } ME = null; lsSet(LS_USER, null); render(); break;
     case 'esqueci': {
       const em = val('lg-email').trim();
@@ -1610,6 +1652,7 @@ document.addEventListener('click', async e => {
     case 'comentar': modalJustificar({ titulo:'Comentar', label:'Comentário', obrig:true, botao:'Salvar', onOk: async t => { await api.comentar(m, t); closeModal(); render(); } }); break;
     case 'cancelar-manut': modalJustificar({ titulo:'Cancelar demanda', texto:'A demanda sai da fila. OCs já geradas continuam valendo.', label:'Motivo', obrig:true, botao:'Cancelar demanda', onOk: async t => { await api.cancelarManut(m, t); closeModal(); go('fila'); toast('Demanda cancelada.'); } }); break;
     case 'cotar-nova': fornCtx = { m, c:null }; modalCotacao(m, null); break;
+    case 'emerg': modalEmergencial(m); break;
     case 'cotar': fornCtx = { m, c }; modalCotacao(m, c); break;
     case 'nova-compra': modalNovaCompra(m); break;
     case 'escolher': await api.escolher(m, c, a.dataset.q); render(); break;
@@ -1726,7 +1769,7 @@ async function boot(){
     S = load();
     if (!S.config) S.config = defaultConfig();
     const id = lsGet(LS_USER); ME = id ? user(id) || null : null;
-    render(); return;
+    if (ME) go('fila', null, { replace: true }); else render(); return;
   }
   S = { v:1, exemplo:false, config:defaultConfig(), users:[], veiculos:[], fornecedores:[], manutencoes:[], ordens:[], seq:{} };
   sb = window.supabase.createClient(CFG.supabaseUrl, CFG.supabaseAnonKey, { auth: { persistSession: true, autoRefreshToken: true } });

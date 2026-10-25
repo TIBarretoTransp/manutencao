@@ -1,0 +1,4 @@
+-- Compra emergencial feita dentro de uma demanda já aberta (não mais na abertura).
+-- Dispensa cotação e gera a OC na hora até o teto; acima, vai para aprovação.
+-- Função public.compra_emergencial(p_manut, p_descricao, p_tipo, p_fornecedor, p_valor, p_pagamento, p_justificativa)
+-- aplicada no projeto em 25/10/2026 (ver histórico de migrações do Supabase).
