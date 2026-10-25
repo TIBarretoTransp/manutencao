@@ -650,3 +650,5 @@ end $$;
 -- ---------------------------------------------------------------------
 alter table public.profiles add column if not exists alcada numeric(12,2);
 -- funções _alcada_de, aprovar, reprovar e salvar_usuario atualizadas na migração.
+
+-- Migrações aplicadas depois desta base: veja a pasta supabase/migrations.

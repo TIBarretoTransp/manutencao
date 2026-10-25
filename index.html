@@ -237,6 +237,8 @@ textarea.input{resize:vertical;min-height:84px}
 .hero .top{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 .hbtn{width:44px;height:44px;margin-left:-10px;border:0;background:none;color:var(--on-bar);display:flex;align-items:center;justify-content:center;border-radius:10px;cursor:pointer;flex:none}
 .hbtn:hover{background:var(--bar-hover)}
+.plate.stock{background:var(--warn-bg);color:var(--warn);border-color:var(--warn-bg)}
+.plate.inv.stock{background:var(--orange);color:var(--on-orange);border-color:var(--orange)}
 .plate.inv{background:var(--plate-inv-bg);color:var(--plate-inv-fg);border-color:var(--plate-inv-bg);font-size:15px}
 .hnum{color:var(--on-bar-2);font-size:14px}
 .hpills{display:flex;gap:6px;margin-left:auto;align-items:center}
@@ -375,7 +377,12 @@ const initials = n => String(n || '?').split(/\s+/).filter(Boolean).slice(0, 2).
 const TEL_DOM = 'tel.barretomanutencao.app';
 function normTel(v){ let d = String(v || '').replace(/\D/g, ''); if (d.startsWith('55') && (d.length === 12 || d.length === 13)) d = d.slice(2); return (d.length === 10 || d.length === 11) ? d : null; }
 const fmtTel = d => !d ? '' : d.length === 11 ? `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}` : d.length === 10 ? `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}` : d;
-const normPlaca = p => String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '').replace(/^([A-Z]{3})([0-9A-Z]{4})$/, '$1-$2');
+const DESTINOS = { tracao:'Tração', carreta:'Carreta', estoque:'Estoque' };
+const ehEstoque = x => x && x.destino === 'estoque';
+const alvoTxt = x => ehEstoque(x) ? 'Estoque' : (x?.placa || '—');
+const plateHtml = (x, cls = 'plate') => ehEstoque(x) ? `<span class="${cls} stock">ESTOQUE</span>` : `<span class="${cls}">${esc(x?.placa || '—')}</span>`;
+const tipoPlaca = pl => S.veiculos.find(v => v.placa === pl)?.tipo || 'tracao';
+const normPlaca = p => String(p || '').toUpperCase().replace(/[^A-Z0-9]/g, '');
 
 /* ---------- dados ---------- */
 function defaultConfig(){
@@ -397,17 +404,17 @@ function seed(){
     { id:'u5', nome:'Motorista 2 (exemplo)', perfil:'motorista', placa:'BRT-4C56' }
   ];
   const veiculos = [
-    { id:'v1', placa:'BRT-1A23', descricao:'Cavalo (exemplo)' },
-    { id:'v2', placa:'BRT-4C56', descricao:'Cavalo (exemplo)' },
-    { id:'v3', placa:'BRT-7E89', descricao:'Cavalo (exemplo)' },
-    { id:'v4', placa:'BRT-2B34', descricao:'Carreta (exemplo)' }
+    { id:'v1', placa:'BRT-1A23', tipo:'tracao', marca:'Exemplo' },
+    { id:'v2', placa:'BRT-4C56', tipo:'tracao', marca:'Exemplo' },
+    { id:'v3', placa:'BRT-7E89', tipo:'tracao', marca:'Exemplo' },
+    { id:'v4', placa:'BRT-2B34', tipo:'carreta', marca:'Exemplo' }
   ];
   const fornecedores = [
     { id:'f1', nome:'Autopeças Exemplo', cnpj:'', cidade:'Itapeva/SP', telefone:'', categoria:'Peças', provisorio:false },
     { id:'f2', nome:'Oficina de Freios Exemplo', cnpj:'', cidade:'Itapeva/SP', telefone:'', categoria:'Serviços', provisorio:false },
     { id:'f3', nome:'Borracharia Exemplo', cnpj:'', cidade:'', telefone:'', categoria:'Pneus', provisorio:false }
   ];
-  const m1 = { id:'m1', num:'M-0001', placa:'BRT-1A23', descricao:'Vazamento de ar no freio do cavalo, compressor ligando toda hora', tipo:'ambos',
+  const m1 = { id:'m1', num:'M-0001', destino:'tracao', placa:'BRT-1A23', descricao:'Vazamento de ar no freio do cavalo, compressor ligando toda hora', tipo:'ambos',
     prioridade:'urgente', prioridadeConfirmada:true, abertoPor:'u4', abertoEm:H(1.2), atendidoPor:'u3', fotos:[], encerradaEm:null, cancelada:false,
     historico:[ {em:H(1.2), por:'u4', txt:'Abriu a demanda'}, {em:H(1.1), por:'u1', txt:'Confirmou como urgente'}, {em:H(0.8), por:'u2', txt:'Lançou 3 cotações'}, {em:H(0.6), por:'u2', txt:'Enviou para aprovação'} ],
     compras:[ { id:'c1', descricao:'Válvula + mão de obra', tipo:'ambos', status:'aprovacao', escolhidaId:'q1', justificativa:'Prazo: caminhão carregado aguardando', dispensa:null,
@@ -415,25 +422,25 @@ function seed(){
       cotacoes:[ {id:'q1', fornecedorId:'f1', valor:1380, prazo:'Hoje 16h', pagamento:'28 dias', obs:'', anexo:null, por:'u2', em:H(0.8)},
                  {id:'q2', fornecedorId:'f2', valor:1520, prazo:'Amanhã 10h', pagamento:'À vista', obs:'', anexo:null, por:'u2', em:H(0.8)},
                  {id:'q3', fornecedorId:'f3', valor:1295, prazo:'2 dias', pagamento:'14 dias', obs:'', anexo:null, por:'u2', em:H(0.8)} ] } ] };
-  const m2 = { id:'m2', num:'M-0002', placa:'BRT-4C56', descricao:'Pneu estourado na estrada', tipo:'peca',
+  const m2 = { id:'m2', num:'M-0002', destino:'tracao', placa:'BRT-4C56', descricao:'Pneu estourado na estrada', tipo:'peca',
     prioridade:'urgente', prioridadeConfirmada:true, abertoPor:'u5', abertoEm:H(2.5), atendidoPor:'u5', fotos:[], encerradaEm:null, cancelada:false,
     historico:[ {em:H(2.5), por:'u5', txt:'Abriu demanda com compra emergencial'} ],
     compras:[ { id:'c2', descricao:'Pneu estourado na estrada', tipo:'peca', status:'aprovada', escolhidaId:'q4', justificativa:'Parado na estrada', dispensa:'Compra emergencial',
       solicitadaEm:H(2.5), solicitadaPor:'u5', ocId:'o1', motivoReprova:null,
       cotacoes:[ {id:'q4', fornecedorId:'f3', valor:2150, prazo:'Imediato', pagamento:'', obs:'', anexo:null, por:'u5', em:H(2.5)} ] } ] };
-  const m3 = { id:'m3', num:'M-0003', placa:'BRT-7E89', descricao:'Troca de lona de freio, eixo traseiro', tipo:'ambos',
+  const m3 = { id:'m3', num:'M-0003', destino:'tracao', placa:'BRT-7E89', descricao:'Troca de lona de freio, eixo traseiro', tipo:'ambos',
     prioridade:'programada', prioridadeConfirmada:true, abertoPor:'u3', abertoEm:H(26), atendidoPor:'u3', fotos:[], encerradaEm:null, cancelada:false,
     historico:[ {em:H(26), por:'u3', txt:'Abriu a demanda'} ], compras:[] };
-  const m4 = { id:'m4', num:'M-0004', placa:'BRT-2B34', descricao:'Lâmpada do farol e sensor do ABS', tipo:'peca',
+  const m4 = { id:'m4', num:'M-0004', destino:'carreta', placa:'BRT-2B34', descricao:'Lâmpada do farol e sensor do ABS', tipo:'peca',
     prioridade:'programada', prioridadeConfirmada:false, abertoPor:'u3', abertoEm:H(30), atendidoPor:null, fotos:[], encerradaEm:null, cancelada:false,
     historico:[ {em:H(30), por:'u3', txt:'Abriu a demanda'} ],
     compras:[ { id:'c3', descricao:'Lâmpada + sensor ABS', tipo:'peca', status:'aprovada', escolhidaId:'q5', justificativa:'', dispensa:null,
       solicitadaEm:H(28), solicitadaPor:'u3', ocId:'o2', motivoReprova:null,
       cotacoes:[ {id:'q5', fornecedorId:'f1', valor:280, prazo:'Hoje', pagamento:'28 dias', obs:'', anexo:null, por:'u3', em:H(28)} ] } ] };
   const ordens = [
-    { id:'o1', num:'OC 26-0001', manutencaoId:'m2', compraId:'c2', placa:'BRT-4C56', fornecedorId:'f3', valor:2150, tipo:'peca', emergencial:true,
+    { id:'o1', num:'OC 26-0001', manutencaoId:'m2', compraId:'c2', destino:'tracao', placa:'BRT-4C56', fornecedorId:'f3', valor:2150, tipo:'peca', emergencial:true,
       aprovadoPor:'u5', aprovadoEm:H(2.5), regularizarAte:new Date(Date.now() + 45.5*3600e3).toISOString(), revisadaPor:null, nf:null, status:'aberta' },
-    { id:'o2', num:'OC 26-0002', manutencaoId:'m4', compraId:'c3', placa:'BRT-2B34', fornecedorId:'f1', valor:280, tipo:'peca', emergencial:false,
+    { id:'o2', num:'OC 26-0002', manutencaoId:'m4', compraId:'c3', destino:'carreta', placa:'BRT-2B34', fornecedorId:'f1', valor:280, tipo:'peca', emergencial:false,
       aprovadoPor:'u3', aprovadoEm:H(27.5), regularizarAte:null, revisadaPor:null, nf:null, status:'aberta' }
   ];
   return { v:1, exemplo:true, config:defaultConfig(), users, veiculos, fornecedores, manutencoes:[m1,m2,m3,m4], ordens, seq:{ M:4, OC:{ '26':2 } } };
@@ -530,7 +537,7 @@ const log = (m, txt) => m.historico.push({ em: now(), por: ME.id, txt });
 
 const apiLocal = {
   async criarDemanda(d){
-    const m = { id: uid(), num: proxNum('M'), placa: d.placa, descricao: d.descricao, tipo: d.tipo,
+    const m = { id: uid(), num: proxNum('M'), destino: d.destino, placa: d.destino === 'estoque' ? null : d.placa, descricao: d.descricao, tipo: d.tipo,
       prioridade: d.emergencial ? 'urgente' : d.prioridade, prioridadeConfirmada: ME.perfil === 'gestor' || !!d.emergencial,
       abertoPor: ME.id, abertoEm: now(), atendidoPor: ME.perfil === 'mecanico' ? ME.id : null, fotos: d.fotos, encerradaEm: null, cancelada: false,
       historico: [], compras: [] };
@@ -673,12 +680,12 @@ async function reload(){
       faixas: [ { ate: num(cfg.faixa1), n: 1 }, { ate: num(cfg.faixa2), n: 2 }, { ate: null, n: 3 } ],
       tetoEmergencial: num(cfg.teto_emergencial), prazoRegularizacaoH: cfg.prazo_regularizacao_h, toleranciaNF: num(cfg.tolerancia_nf) },
     users: p.map(u => ({ id: u.id, nome: u.nome || u.email, email: (u.email || '').endsWith(TEL_DOM) ? '' : u.email, telefone: u.telefone || '', perfil: u.perfil, placa: u.placa, ativo: u.ativo, alcada: u.alcada == null ? null : Number(u.alcada) })),
-    veiculos: vs.map(v => ({ id: v.id, placa: v.placa, descricao: v.descricao })),
+    veiculos: vs.map(v => ({ id: v.id, placa: v.placa, tipo: v.tipo, marca: v.marca, anoModelo: v.ano_modelo })),
     fornecedores: fs.map(f => ({ id: f.id, nome: f.nome, cnpj: f.cnpj, cidade: f.cidade, telefone: f.telefone, categoria: f.categoria, provisorio: f.provisorio })),
-    manutencoes: ms.map(m => ({ id: m.id, num: m.num, placa: m.placa, descricao: m.descricao, tipo: m.tipo, prioridade: m.prioridade, prioridadeConfirmada: m.prioridade_confirmada,
+    manutencoes: ms.map(m => ({ id: m.id, num: m.num, destino: m.destino, placa: m.placa, descricao: m.descricao, tipo: m.tipo, prioridade: m.prioridade, prioridadeConfirmada: m.prioridade_confirmada,
       abertoPor: m.aberto_por, abertoEm: m.aberto_em, atendidoPor: m.atendido_por, fotos: (m.fotos || []).map(furl).filter(Boolean), encerradaEm: m.encerrada_em, cancelada: m.cancelada,
       historico: histCache[m.id] || [], compras: compPor[m.id] || [] })),
-    ordens: os.map(o => ({ id: o.id, num: o.num, manutencaoId: o.manutencao_id, compraId: o.compra_id, placa: o.placa, fornecedorId: o.fornecedor_id, valor: num(o.valor), tipo: o.tipo,
+    ordens: os.map(o => ({ id: o.id, num: o.num, manutencaoId: o.manutencao_id, compraId: o.compra_id, destino: o.destino, placa: o.placa, fornecedorId: o.fornecedor_id, valor: num(o.valor), tipo: o.tipo,
       emergencial: o.emergencial, aprovadoPor: o.aprovado_por, aprovadoEm: o.aprovado_em, regularizarAte: o.regularizar_ate, revisadaPor: o.revisada_por, status: o.status,
       nf: o.nf_em ? { numero: o.nf_numero, valor: num(o.nf_valor), foto: furl(o.nf_foto), por: o.nf_por, em: o.nf_em } : null })),
     seq: {}
@@ -706,7 +713,7 @@ const apiRemote = {
   async criarDemanda(d){
     const paths = [];
     for (const f of d.fotos) paths.push(await uploadFoto(f, 'demandas'));
-    const r = await rpc('criar_demanda', { p_placa: d.placa, p_descricao: d.descricao, p_tipo: d.tipo, p_prioridade: d.prioridade, p_fotos: paths,
+    const r = await rpc('abrir_demanda', { p_destino: d.destino, p_placa: d.destino === 'estoque' ? null : d.placa, p_descricao: d.descricao, p_tipo: d.tipo, p_prioridade: d.prioridade, p_fotos: paths,
       p_emerg: d.emergencial ? { fornecedor_id: d.emergencial.fornecedorId, valor: d.emergencial.valor, justificativa: d.emergencial.justificativa, pagamento: d.emergencial.pagamento } : null });
     await reload();
     return { m: manut(r.manutencao_id), oc: r.ordem_id ? ordem(r.ordem_id) : null };
@@ -776,7 +783,7 @@ let loginErro = '';
 
 function gerarOC(m, c, emergencial){
   const q = escolhida(c);
-  const o = { id: uid(), num: proxNum('OC'), manutencaoId: m.id, compraId: c.id, placa: m.placa, fornecedorId: q.fornecedorId, valor: q.valor,
+  const o = { id: uid(), num: proxNum('OC'), manutencaoId: m.id, compraId: c.id, destino: m.destino, placa: m.placa, fornecedorId: q.fornecedorId, valor: q.valor,
     tipo: c.tipo, emergencial, aprovadoPor: ME.id, aprovadoEm: now(),
     regularizarAte: emergencial ? new Date(Date.now() + S.config.prazoRegularizacaoH * 3600e3).toISOString() : null,
     revisadaPor: null, nf: null, status: 'aberta' };
@@ -909,7 +916,7 @@ function totais(){
   const mes = S.ordens.filter(o => o.status !== 'cancelada' && new Date(o.aprovadoEm) >= ini);
   const gasto = mes.reduce((a, o) => a + (o.nf ? o.nf.valor : o.valor), 0);
   const porPlaca = {};
-  mes.forEach(o => porPlaca[o.placa] = (porPlaca[o.placa] || 0) + (o.nf ? o.nf.valor : o.valor));
+  mes.forEach(o => { const k = alvoTxt(o); porPlaca[k] = (porPlaca[k] || 0) + (o.nf ? o.nf.valor : o.valor); });
   const placas = Object.entries(porPlaca).sort((a, b) => b[1] - a[1]).slice(0, 6);
   const tempos = [];
   S.manutencoes.forEach(m => m.compras.forEach(c => { const o = ordem(c.ocId); if (o && !o.emergencial && c.solicitadaEm && new Date(o.aprovadoEm) >= ini) tempos.push((new Date(o.aprovadoEm) - new Date(c.solicitadaEm)) / 3600e3); }));
@@ -925,10 +932,10 @@ const fmtH = h => h == null ? '—' : h < 1 ? `${Math.max(1, Math.round(h * 60))
 function viewFila(){
   const lista = visiveis(ME);
   const ativas = lista.filter(m => !['encerrada', 'cancelada'].includes(statusManut(m)));
-  const placas = [...new Set(lista.map(m => m.placa))].sort();
-  const filtra = arr => arr.filter(m => (!V.placa || m.placa === V.placa) &&
+  const placas = [...new Set(lista.map(alvoTxt))].sort((a, b) => a === 'Estoque' ? 1 : b === 'Estoque' ? -1 : a.localeCompare(b));
+  const filtra = arr => arr.filter(m => (!V.placa || alvoTxt(m) === V.placa) &&
     (!V.so || V.so === 'encerradas' || (V.so === 'minhas' ? (m.abertoPor === ME.id || m.atendidoPor === ME.id) : V.so === 'triagem' ? !m.prioridadeConfirmada : statusManut(m) === V.so)) &&
-    (!V.busca || (m.num + ' ' + m.placa + ' ' + m.descricao).toLowerCase().includes(V.busca.toLowerCase())));
+    (!V.busca || (m.num + ' ' + alvoTxt(m) + ' ' + m.descricao).toLowerCase().includes(V.busca.toLowerCase())));
   const urg = filtra(ativas.filter(m => m.prioridade === 'urgente'));
   const prog = filtra(ativas.filter(m => m.prioridade === 'programada'));
   const enc = filtra(lista.filter(m => ['encerrada', 'cancelada'].includes(statusManut(m))));
@@ -937,13 +944,13 @@ function viewFila(){
 
   const row = m => { const s = statusManut(m); const nv = m.compras.filter(c => c.status !== 'cancelada').reduce((a, c) => a + (valorCompra(c) || 0), 0);
     return `<button class="qrow" data-go="demanda" data-id="${m.id}">
-      <span class="muted num">${esc(m.num)}</span><span><span class="plate">${esc(m.placa)}</span></span>
+      <span class="muted num">${esc(m.num)}</span><span>${plateHtml(m)}</span>
       <span style="font-weight:600;min-width:0">${esc(m.descricao)} ${!m.prioridadeConfirmada ? '<span class="tag-sug">sugerida</span>' : ''}</span>
       <span class="muted">${esc(nomeU(m.abertoPor))}</span><span>${pillSt(s)}</span>
       <span class="num" style="font-weight:700;text-align:right">${nv ? fmtR(nv) : '—'}</span><span class="muted" style="text-align:right">${rel(m.abertoEm)}</span></button>`; };
   const card = m => { const s = statusManut(m);
     return `<button class="qcard" data-go="demanda" data-id="${m.id}">
-      <span class="row" style="justify-content:space-between"><span class="plate">${esc(m.placa)}</span>${pillSt(s)}</span>
+      <span class="row" style="justify-content:space-between">${plateHtml(m)}${pillSt(s)}</span>
       <span class="t">${esc(m.descricao)}</span>
       <span class="meta"><span class="num">${esc(m.num)}</span><span>${esc(nomeU(m.abertoPor))}</span>${m.fotos.length ? `<span class="row" style="gap:4px">${ic('cam', 15)}${m.fotos.length}</span>` : ''}${!m.prioridadeConfirmada ? '<span class="tag-sug">prioridade sugerida</span>' : ''}<span style="margin-left:auto">${rel(m.abertoEm)}</span></span></button>`; };
   const section = (titulo, cor, arr) => `
@@ -968,11 +975,11 @@ function viewFila(){
       <div class="row hide-m" style="gap:8px">
         <input class="input" id="busca-fila" placeholder="Buscar nº, placa ou descrição" value="${esc(V.busca)}" style="flex:1 1 220px;min-height:40px;font-size:15px" aria-label="Buscar">
         <select class="input" id="placa-fila" style="flex:0 1 170px;min-height:40px;font-size:15px" aria-label="Placa">
-          <option value="">Todas as placas</option>${placas.map(p => `<option ${V.placa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
+          <option value="">Placas e estoque</option>${placas.map(p => `<option ${V.placa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}
         </select>
       </div>
       <div class="chips">
-        <select class="chip m-only" id="placa-fila-m" aria-label="Placa"><option value="">Todas as placas</option>${placas.map(p => `<option ${V.placa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>
+        <select class="chip m-only" id="placa-fila-m" aria-label="Placa"><option value="">Placas e estoque</option>${placas.map(p => `<option ${V.placa === p ? 'selected' : ''}>${esc(p)}</option>`).join('')}</select>
         ${[['', 'Todas'], ['minhas', 'Minhas'], ['aprovacao', 'Aguardando aprovação', cnt(m => statusManut(m) === 'aprovacao')], ['cotacao', 'Em cotação', cnt(m => statusManut(m) === 'cotacao')], ['emergencial', 'Emergenciais', cnt(m => statusManut(m) === 'emergencial')], ...(pode.prioridade(ME) && nTri ? [['triagem', 'Prioridade a confirmar', nTri]] : []), ['encerradas', 'Encerradas']]
           .map(([v, l, n]) => `<button class="chip" data-act="so" data-v="${v}" aria-pressed="${V.so === v}">${l}${n ? ' · ' + n : ''}</button>`).join('')}
       </div>
@@ -989,7 +996,7 @@ function viewFila(){
         <div class="stat"><span class="l">Compras emergenciais</span><span class="v">${t.pctEmerg}%</span></div>
       </div>
       <div class="card pad stack">
-        <span style="font-weight:800">Gasto por placa</span>
+        <span style="font-weight:800">Gasto por placa e estoque</span>
         ${t.placas.length ? t.placas.map(([p, v]) => `<div class="stack" style="gap:4px"><div class="row small" style="justify-content:space-between"><span style="font-weight:700">${esc(p)}</span><span class="num">${fmtR(v)}</span></div><span class="bar" style="width:${Math.max(4, 100 * v / t.placas[0][1])}%"></span></div>`).join('') : '<span class="small muted">Sem ordens neste mês.</span>'}
       </div>
     </aside></div>
@@ -998,22 +1005,25 @@ function viewFila(){
 
 /* ---------- nova demanda ---------- */
 function novoDraft(){
-  return { placa: ME.placa || '', descricao:'', tipo:'peca', prioridade:'urgente', fotos:[], emergencial:false, fornecedorId:'', valor:'', justificativa:'', pagamento:'' };
+  return { destino: ME.placa ? tipoPlaca(ME.placa) : 'tracao', placa: ME.placa || '', descricao:'', tipo:'peca', prioridade:'urgente', fotos:[], emergencial:false, fornecedorId:'', valor:'', justificativa:'', pagamento:'' };
 }
 function viewNova(){
   if (!draft) draft = novoDraft();
   const d = draft;
-  const placas = S.veiculos.map(v => v.placa);
+  const placas = S.veiculos.filter(v => v.tipo === d.destino).map(v => v.placa);
   const teto = S.config.tetoEmergencial;
+  const est = d.destino === 'estoque';
   return `<div class="content" style="max-width:720px">
     <div class="subbar"><button class="hbtn" data-go="fila" aria-label="Voltar">${ic('back', 22, 2.2)}</button><h1>Nova demanda</h1><span class="sb-hint">leva uns 30 segundos</span></div>
     <form class="card pad stack form-card" id="form-nova" style="gap:18px">
-      <div class="field"><span class="lbl">Placa</span>
-        <div class="chips">${placas.map(p => `<button type="button" class="chip plate-chip" data-act="d-placa" data-v="${esc(p)}" aria-pressed="${d.placa === p}">${esc(p)}</button>`).join('')}</div>
-        ${!placas.length ? '<span class="hint">Nenhum veículo cadastrado. Peça ao analista para cadastrar em Cadastros.</span>' : ''}
-      </div>
-      <div class="field"><label for="d-desc">O que está acontecendo?</label>
-        <textarea class="input" id="d-desc" data-draft="descricao" rows="3" placeholder="Ex.: barulho na roda dianteira, vazamento de óleo, pneu furado">${esc(d.descricao)}</textarea></div>
+      <div class="field"><span class="lbl">Para onde é</span>
+        <div class="seg blue">${Object.entries(DESTINOS).map(([v, l]) => `<button type="button" data-act="d-dest" data-v="${v}" aria-pressed="${d.destino === v}">${l}</button>`).join('')}</div></div>
+      ${est ? `<div class="notice info"><span>Compra para deixar em estoque. Não precisa de placa.</span></div>` : `<div class="field"><span class="lbl">Placa ${d.destino === 'tracao' ? 'da tração' : 'da carreta'}</span>
+        <div class="chips" style="flex-wrap:wrap;overflow:visible;margin-inline:0;padding:0">${placas.map(p => `<button type="button" class="chip plate-chip" data-act="d-placa" data-v="${esc(p)}" aria-pressed="${d.placa === p}">${esc(p)}</button>`).join('')}</div>
+        ${!placas.length ? `<span class="hint">Nenhuma ${d.destino === 'tracao' ? 'tração' : 'carreta'} cadastrada. Peça ao analista para cadastrar em Cadastros › Veículos.</span>` : ''}
+      </div>`}
+      <div class="field"><label for="d-desc">${est ? 'O que precisa comprar?' : 'O que está acontecendo?'}</label>
+        <textarea class="input" id="d-desc" data-draft="descricao" rows="3" placeholder="${est ? 'Ex.: 10 filtros de óleo, 4 lonas de freio, 1 balde de graxa' : 'Ex.: barulho na roda dianteira, vazamento de óleo, pneu furado'}">${esc(d.descricao)}</textarea></div>
       <div class="field"><span class="lbl">Fotos</span>
         <div class="photos">${photosHtml(d.fotos, true, 'draft')}
           <label class="addphoto">${ic('cam', 26)}<span>Adicionar</span><input type="file" accept="image/*" capture="environment" multiple id="d-fotos"></label></div>
@@ -1042,8 +1052,8 @@ function viewNova(){
 }
 async function submitNova(){
   const d = draft;
-  if (!d.placa) return toast('Escolha a placa.', true);
-  if (!d.descricao.trim()) return toast('Descreva o que está acontecendo.', true);
+  if (d.destino !== 'estoque' && !d.placa) return toast('Escolha a placa.', true);
+  if (!d.descricao.trim()) return toast(d.destino === 'estoque' ? 'Descreva o que precisa comprar.' : 'Descreva o que está acontecendo.', true);
   let emerg = null;
   if (d.emergencial) {
     const valor = parseR(d.valor);
@@ -1052,7 +1062,7 @@ async function submitNova(){
     if (!d.justificativa.trim()) return toast('Diga por que a compra é emergencial.', true);
     emerg = { fornecedorId: d.fornecedorId, valor, justificativa: d.justificativa.trim(), pagamento: d.pagamento };
   }
-  const { m, oc } = await api.criarDemanda({ placa: d.placa, descricao: d.descricao.trim(), tipo: d.tipo, prioridade: d.prioridade, fotos: d.fotos, emergencial: emerg });
+  const { m, oc } = await api.criarDemanda({ destino: d.destino, placa: d.destino === 'estoque' ? null : d.placa, descricao: d.descricao.trim(), tipo: d.tipo, prioridade: d.prioridade, fotos: d.fotos, emergencial: emerg });
   draft = null;
   if (oc) { toast(`${oc.num} gerada. Informe ao fornecedor.`); go('oc', oc.id); }
   else if (emerg) { toast('Valor acima do teto emergencial. Enviado ao gestor como urgente.'); go('demanda', m.id); }
@@ -1085,7 +1095,7 @@ function viewDemanda(){
     <section class="hero">
       <div class="top">
         <button class="hbtn" data-go="fila" aria-label="Voltar à fila">${ic('back', 22, 2.2)}</button>
-        <span class="plate inv">${esc(m.placa)}</span><span class="hnum num">${esc(m.num)}</span>
+        ${plateHtml(m, 'plate inv')}<span class="hnum num">${esc(m.num)}</span>
         <span class="hpills">${pillPri(m)}${!m.prioridadeConfirmada ? '<span class="tag-sug inv">sugerida</span>' : ''}</span>
       </div>
       <h1>${esc(m.descricao)}</h1>
@@ -1216,7 +1226,7 @@ function viewAprovar(){
   const div = pode.revisar(ME) ? divergentes() : [];
   const item = ({ m, c }) => { const v = valorCompra(c), q = escolhida(c);
     return `<div class="compra">
-      <div class="ch"><span class="plate">${esc(m.placa)}</span><span class="muted num">${esc(m.num)}</span>${pillPri(m)}<span style="margin-left:auto;font-size:18px" class="num"><b>${fmtR(v)}</b></span></div>
+      <div class="ch">${plateHtml(m)}<span class="muted num">${esc(m.num)}</span>${pillPri(m)}<span style="margin-left:auto;font-size:18px" class="num"><b>${fmtR(v)}</b></span></div>
       <div style="padding:12px 16px" class="stack">
         <span style="font-weight:700;font-size:16px">${esc(c.descricao)}</span>
         <span class="small muted">${esc(nomeF(q?.fornecedorId))} · ${c.cotacoes.length} cotação(ões)${c.cotacoes.length > 1 && menorCot(c).id !== c.escolhidaId ? ' · <b style="color:var(--warn)">não é a menor</b>' : ''} · enviada ${rel(c.solicitadaEm)} por ${esc(nomeU(c.solicitadaPor))}</span>
@@ -1226,11 +1236,11 @@ function viewAprovar(){
         <button class="btn danger" data-act="reprovar" data-m="${m.id}" data-c="${c.id}">Reprovar</button>
         <button class="btn primary" data-act="aprovar-direto" data-m="${m.id}" data-c="${c.id}">Aprovar</button></div></div>`; };
   const em = o => { const venc = o.regularizarAte && new Date(o.regularizarAte) < new Date();
-    return `<div class="compra"><div class="ch"><b class="num">${esc(o.num)}</b><span class="plate">${esc(o.placa)}</span>
+    return `<div class="compra"><div class="ch"><b class="num">${esc(o.num)}</b>${plateHtml(o)}
       ${o.nf ? '<span class="pill ok">NF anexada</span>' : venc ? '<span class="pill bad">Prazo vencido</span>' : `<span class="pill warn">NF até ${fmtDT(o.regularizarAte)}</span>`}<span style="margin-left:auto" class="num"><b>${fmtR(o.nf?.valor ?? o.valor)}</b></span></div>
       <div style="padding:12px 16px" class="small muted">${esc(nomeF(o.fornecedorId))} · comprada por ${esc(nomeU(o.aprovadoPor))} ${rel(o.aprovadoEm)} · ${esc(escolhidaJust(o))}</div>
       <div class="actions"><button class="btn sm" data-go="oc" data-id="${o.id}">Abrir OC</button><span style="flex:1"></span>${o.nf ? `<button class="btn primary" data-act="revisar" data-o="${o.id}">Marcar como revisada</button>` : ''}</div></div>`; };
-  const dv = o => `<div class="compra"><div class="ch"><b class="num">${esc(o.num)}</b><span class="plate">${esc(o.placa)}</span><span class="pill bad">NF divergente</span></div>
+  const dv = o => `<div class="compra"><div class="ch"><b class="num">${esc(o.num)}</b>${plateHtml(o)}<span class="pill bad">NF divergente</span></div>
       <div style="padding:12px 16px" class="small">Aprovado ${fmtR(o.valor)} · NF ${fmtR(o.nf.valor)} (<b>+${(100 * (o.nf.valor / o.valor - 1)).toFixed(1).replace('.', ',')}%</b>) · ${esc(nomeF(o.fornecedorId))}</div>
       <div class="actions"><button class="btn sm" data-go="oc" data-id="${o.id}">Abrir OC</button><span style="flex:1"></span><button class="btn primary" data-act="aceitar-div" data-o="${o.id}">Aceitar diferença</button></div></div>`;
   return `<div class="content" style="max-width:860px">
@@ -1249,13 +1259,13 @@ const stOC = o => o.status === 'cancelada' ? '<span class="pill neutral">Cancela
 function visOrdens(){ if (ME.perfil !== 'motorista') return S.ordens; const ids = new Set(visiveis(ME).map(m => m.id)); return S.ordens.filter(o => ids.has(o.manutencaoId)); }
 function viewOrdens(){
   const b = V.ocBusca.toLowerCase();
-  const lista = visOrdens().filter(o => !b || (o.num + ' ' + o.placa + ' ' + nomeF(o.fornecedorId) + ' ' + (o.nf?.numero || '')).toLowerCase().includes(b));
+  const lista = visOrdens().filter(o => !b || (o.num + ' ' + alvoTxt(o) + ' ' + nomeF(o.fornecedorId) + ' ' + (o.nf?.numero || '')).toLowerCase().includes(b));
   return `<div class="content" style="max-width:1000px">
     <div class="page-h"><h1>Ordens de compra</h1><div class="right">${ME.perfil !== 'motorista' ? `<button class="btn sm" data-act="csv">Exportar planilha (CSV)</button>` : ''}</div></div>
     <input class="input" id="busca-oc" placeholder="Buscar nº da OC, placa, fornecedor ou NF" value="${esc(V.ocBusca)}" aria-label="Buscar ordens">
     <div class="card" style="overflow:hidden"><div class="olist">
       ${lista.length ? lista.map(o => `<button class="orow" data-go="oc" data-id="${o.id}">
-        <b class="num">${esc(o.num)}</b><span class="hm"><span class="plate">${esc(o.placa)}</span></span><span class="hm" style="min-width:0">${esc(nomeF(o.fornecedorId))}</span>
+        <b class="num">${esc(o.num)}</b><span class="hm">${plateHtml(o)}</span><span class="hm" style="min-width:0">${esc(nomeF(o.fornecedorId))}</span>
         <span class="num" style="font-weight:700;text-align:right">${fmtR(o.nf?.valor ?? o.valor)}</span><span style="text-align:right">${stOC(o)}</span>
       </button>`).join('') : '<div class="empty">Nenhuma ordem encontrada.</div>'}
     </div></div>
@@ -1266,7 +1276,7 @@ function waLink(o){
   let tel = String(f?.telefone || '').replace(/\D/g, '');
   if (tel && tel.length <= 11) tel = '55' + tel;
   const m = manut(o.manutencaoId);
-  const msg = `Barreto Transportes — Ordem de compra ${o.num}\nPlaca: ${o.placa}\n${m ? 'Serviço/peça: ' + (m.compras.find(c => c.id === o.compraId)?.descricao || m.descricao) + '\n' : ''}Valor aprovado: ${fmtR(o.valor)}\nPor favor, informe o número ${o.num} na nota fiscal.`;
+  const msg = `Barreto Transportes — Ordem de compra ${o.num}\n${ehEstoque(o) ? 'Destino: estoque' : 'Placa: ' + o.placa}\n${m ? 'Serviço/peça: ' + (m.compras.find(c => c.id === o.compraId)?.descricao || m.descricao) + '\n' : ''}Valor aprovado: ${fmtR(o.valor)}\nPor favor, informe o número ${o.num} na nota fiscal.`;
   return `https://wa.me/${tel}?text=${encodeURIComponent(msg)}`;
 }
 function viewOC(){
@@ -1284,7 +1294,7 @@ function viewOC(){
     <div class="card lines">
       <div class="ln"><span>Fornecedor</span><b>${esc(nomeF(o.fornecedorId))}</b></div>
       ${f?.telefone ? `<div class="ln"><span>Telefone</span><b>${esc(f.telefone)}</b></div>` : ''}
-      <div class="ln"><span>Placa</span><b>${esc(o.placa)}</b></div>
+      <div class="ln"><span>${ehEstoque(o) ? 'Destino' : 'Placa'}</span><b>${ehEstoque(o) ? 'Estoque' : esc(o.placa)}</b></div>
       <div class="ln"><span>Manutenção</span><b>${m ? `<a href="#" data-go="demanda" data-id="${m.id}">${esc(m.num)}</a> · ${esc(c?.descricao || m.descricao)}` : '—'}</b></div>
       <div class="ln"><span>Valor aprovado</span><b class="num" style="font-weight:800">${fmtR(o.valor)}</b></div>
       ${o.nf ? `<div class="ln"><span>NF</span><b>${esc(o.nf.numero || 's/ nº')} · <span class="num">${fmtR(o.nf.valor)}</span></b></div><div class="ln"><span>Recebida por</span><b>${esc(nomeU(o.nf.por))} · ${fmtDT(o.nf.em)}</b></div>` : ''}
@@ -1326,8 +1336,8 @@ function viewCadastros(){
     ${S.fornecedores.map(f => `<tr><td><b>${esc(f.nome)}</b> ${f.provisorio ? '<span class="tag-sug">completar cadastro</span>' : ''}</td><td>${esc(f.categoria)}</td><td>${esc(f.cidade)}</td><td>${esc(f.telefone)}</td><td>${esc(f.cnpj)}</td><td><button class="btn sm" data-act="forn-edit" data-id="${f.id}">Editar</button></td></tr>`).join('')}
     </tbody></table></div>`;
   if (V.cad === 'veiculos') body = `<div class="row"><button class="btn primary" data-act="veic-edit">${ic('plus', 18)} Veículo</button></div>
-    <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Placa</th><th>Descrição</th><th></th></tr></thead><tbody>
-    ${S.veiculos.map(v => `<tr><td><span class="plate">${esc(v.placa)}</span></td><td>${esc(v.descricao)}</td><td><button class="btn sm" data-act="veic-edit" data-id="${v.id}">Editar</button></td></tr>`).join('')}
+    <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Placa</th><th>Tipo</th><th>Marca / modelo</th><th>Ano/modelo</th><th></th></tr></thead><tbody>
+    ${S.veiculos.slice().sort((a, b) => a.tipo.localeCompare(b.tipo) * -1 || a.placa.localeCompare(b.placa)).map(v => `<tr><td><span class="plate">${esc(v.placa)}</span></td><td>${DESTINOS[v.tipo]}</td><td>${esc(v.marca || '')}</td><td>${esc(v.anoModelo || '')}</td><td><button class="btn sm" data-act="veic-edit" data-id="${v.id}">Editar</button></td></tr>`).join('')}
     </tbody></table></div>`;
   if (V.cad === 'usuarios') body = `<div class="row"><button class="btn primary" data-act="user-edit">${ic('plus', 18)} Usuário</button><button class="btn" data-go="config">${ic('gear', 18)} Alçadas padrão por perfil</button></div>
     <div class="card" style="overflow-x:auto"><table class="tbl"><thead><tr><th>Nome</th><th>Perfil</th><th>Alçada</th><th>Placa padrão</th><th></th></tr></thead><tbody>
@@ -1442,14 +1452,23 @@ function modalFornecedor(f, ret){
 }
 let fornCtx = null;
 function modalVeiculo(v){
-  const x = v || { placa:'', descricao:'' };
-  openModal(`<h2>${v ? 'Editar veículo' : 'Novo veículo'}</h2><form id="mform" class="stack">
-    <div class="field"><label for="mv-placa">Placa</label><input class="input" id="mv-placa" value="${esc(x.placa)}" placeholder="ABC-1D23" style="text-transform:uppercase"></div>
-    <div class="field"><label for="mv-desc">Descrição</label><input class="input" id="mv-desc" value="${esc(x.descricao)}" placeholder="Ex.: cavalo, carreta, modelo"></div>
+  const x = v || { placa:'', tipo:'tracao', marca:'', anoModelo:'' };
+  openModal(`<h2>${v ? 'Editar veículo' : 'Novo veículo'}</h2><form id="mform" class="stack" style="gap:12px">
+    <div class="field"><span class="lbl">Tipo</span><div class="seg blue">
+      <button type="button" data-act="mv-tipo" data-v="tracao" aria-pressed="${x.tipo === 'tracao'}">Tração</button>
+      <button type="button" data-act="mv-tipo" data-v="carreta" aria-pressed="${x.tipo === 'carreta'}">Carreta</button></div>
+      <input type="hidden" id="mv-tipo" value="${x.tipo}"></div>
+    <div class="fgrid">
+      <div class="field"><label for="mv-placa">Placa</label><input class="input" id="mv-placa" value="${esc(x.placa)}" placeholder="ABC1D23" style="text-transform:uppercase" autocomplete="off"></div>
+      <div class="field"><label for="mv-ano">Ano/modelo</label><input class="input" id="mv-ano" value="${esc(x.anoModelo || '')}" placeholder="2020/2021" inputmode="numeric"></div>
+    </div>
+    <div class="field"><label for="mv-marca">Marca / modelo</label><input class="input" id="mv-marca" value="${esc(x.marca || '')}" placeholder="Ex.: VOLVO/FH 460 6X2T"></div>
     <div class="foot"><button type="button" class="btn" data-act="fechar">Cancelar</button><button class="btn primary" type="submit">Salvar</button></div></form>`,
-    async () => { const p = normPlaca(val('mv-placa')); if (p.length < 7) return toast('Placa inválida.', true);
+    async () => { const p = normPlaca(val('mv-placa'));
+      if (!/^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/.test(p)) return toast('Placa inválida. Use o formato ABC1D23 ou ABC1234.', true);
       if (S.veiculos.some(z => z.placa === p && z.id !== v?.id)) return toast('Essa placa já existe.', true);
-      await api.salvarVeiculo({ ...(v ? { id: v.id } : {}), placa: p, descricao: val('mv-desc') }); closeModal(); render(); toast('Veículo salvo.'); });
+      await api.salvarVeiculo({ ...(v ? { id: v.id } : {}), placa: p, tipo: val('mv-tipo'), marca: val('mv-marca').trim(), ano_modelo: val('mv-ano').trim(), anoModelo: val('mv-ano').trim() });
+      closeModal(); render(); toast('Veículo salvo.'); });
 }
 function modalSenha(dica){
   openModal(`<h2>${dica ? 'Criar nova senha' : 'Trocar senha'}</h2><form id="mform" class="stack">
@@ -1475,7 +1494,7 @@ function modalUsuario(u){
       : `<div class="field"><span class="lbl">Login</span><span>${x.telefone ? esc(fmtTel(x.telefone)) : esc(x.email || '—')}</span></div>`) : ''}
     <div class="fgrid">
       <div class="field"><label for="mu-perfil">Perfil</label><select class="input" id="mu-perfil">${Object.entries(PERFIS).map(([k, l]) => `<option value="${k}" ${x.perfil === k ? 'selected' : ''}>${l}</option>`).join('')}</select></div>
-      <div class="field"><label for="mu-placa">Placa padrão (motorista)</label><select class="input" id="mu-placa"><option value="">Nenhuma</option>${S.veiculos.map(v => `<option ${x.placa === v.placa ? 'selected' : ''}>${esc(v.placa)}</option>`).join('')}</select></div>
+      <div class="field"><label for="mu-placa">Tração padrão (motorista)</label><select class="input" id="mu-placa"><option value="">Nenhuma</option>${S.veiculos.filter(v => v.tipo === 'tracao').map(v => `<option ${x.placa === v.placa ? 'selected' : ''}>${esc(v.placa)}</option>`).join('')}</select></div>
     </div>
     <div class="field" id="mu-alc-box"><label for="mu-alc">Alçada individual (R$)</label>
       <input class="input num" id="mu-alc" inputmode="decimal" placeholder="Padrão do perfil" value="${x.alcada != null ? String(x.alcada).replace('.', ',') : ''}">
@@ -1570,7 +1589,9 @@ document.addEventListener('click', async e => {
       S = { v:1, exemplo:false, config:S.config, users:[S.users.find(u => u.id === ME.id) || ME], veiculos:[], fornecedores:[], manutencoes:[], ordens:[], seq:{ M:0, OC:{} } };
       persist(); closeModal(); go('cadastros'); V.cad = 'veiculos'; render(); toast('Exemplos apagados. Cadastre veículos e fornecedores.'); break;
     /* nova demanda */
+    case 'mv-tipo': document.getElementById('mv-tipo').value = a.dataset.v; document.querySelectorAll('[data-act=mv-tipo]').forEach(b => b.setAttribute('aria-pressed', b.dataset.v === a.dataset.v)); break;
     case 'd-placa': draft.placa = a.dataset.v; render(); break;
+    case 'd-dest': if (draft.destino !== a.dataset.v) { draft.destino = a.dataset.v; draft.placa = (a.dataset.v !== 'estoque' && ME.placa && tipoPlaca(ME.placa) === a.dataset.v) ? ME.placa : ''; } render(); break;
     case 'd-tipo': draft.tipo = a.dataset.v; render(); break;
     case 'd-pri': draft.prioridade = a.dataset.v; render(); break;
     case 'rm-foto': draft.fotos.splice(+a.dataset.i, 1); render(); break;
@@ -1686,9 +1707,9 @@ document.addEventListener('change', async e => {
 document.addEventListener('keydown', e => { if (e.key === 'Escape' && document.querySelector('#modal-root .modal')) closeModal(); });
 
 function exportCSV(){
-  const cab = ['OC', 'Data aprovação', 'Placa', 'Fornecedor', 'CNPJ', 'Manutenção', 'Descrição', 'Valor aprovado', 'NF', 'Valor NF', 'Situação', 'Emergencial', 'Aprovado por'];
+  const cab = ['OC', 'Data aprovação', 'Placa / destino', 'Fornecedor', 'CNPJ', 'Manutenção', 'Descrição', 'Valor aprovado', 'NF', 'Valor NF', 'Situação', 'Emergencial', 'Aprovado por'];
   const linhas = visOrdens().map(o => { const m = manut(o.manutencaoId), c = m?.compras.find(x => x.id === o.compraId), f = forn(o.fornecedorId);
-    return [o.num, fmtD(o.aprovadoEm), o.placa, f?.nome || '', f?.cnpj || '', m?.num || '', c?.descricao || '', String(o.valor.toFixed(2)).replace('.', ','),
+    return [o.num, fmtD(o.aprovadoEm), alvoTxt(o), f?.nome || '', f?.cnpj || '', m?.num || '', c?.descricao || '', String(o.valor.toFixed(2)).replace('.', ','),
       o.nf?.numero || '', o.nf ? String(o.nf.valor.toFixed(2)).replace('.', ',') : '', o.status, o.emergencial ? 'Sim' : 'Não', nomeU(o.aprovadoPor)]; });
   const csv = '﻿' + [cab, ...linhas].map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(';')).join('\r\n');
   try {
