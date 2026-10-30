@@ -1053,7 +1053,7 @@ function viewOS(){
         ${cs.length ? comprasHtml : `<div class="card pad stack"><p class="muted" style="margin:0">${ativa
           ? `Nenhuma OC ainda. ${pode.abrirOC() ? 'Abra uma OC para cotar o que precisa ser comprado.' : 'O mecânico ou o analista abre a OC e cota.'} Se não dá para cotar (ex.: caminhão parado), peça autorização para comprar sem cotação.`
           : 'Nenhuma OC nesta OS.'}</p></div>`}
-        ${botoesOC ? `<div class="row ${!cs.length ? 'hide-m' : ''}">${botoesOC}</div>` : ''}
+        ${botoesOC ? `<div class="row ${bar === botoesOC ? 'hide-m' : ''}">${botoesOC}</div>` : ''}
         ${canc.length ? `<details class="small"><summary class="muted" style="cursor:pointer">${canc.length} OC cancelada(s)</summary><div class="stack" style="margin-top:8px">${canc.map(c => `<div class="muted">${esc(c.descricao)}${c.canceladaMotivo ? ' · ' + esc(c.canceladaMotivo) : ''}</div>`).join('')}</div></details>` : ''}
       </div>
       <div class="a">
