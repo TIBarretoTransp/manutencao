@@ -5,7 +5,7 @@ import { createClient } from "jsr:@supabase/supabase-js@2";
 
 // Domínio interno: o login por celular vira <ddd+numero>@tel.barretomanutencao.app
 const DOMINIO = "tel.barretomanutencao.app";
-const PERFIS = ["motorista", "mecanico", "analista", "gestor"];
+const PERFIS = ["motorista", "mecanico", "analista", "financeiro", "gestor"];
 
 const cors = {
   "Access-Control-Allow-Origin": "*",
